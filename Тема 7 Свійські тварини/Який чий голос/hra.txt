@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Гра: Який чий голос?</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .game-title {
+            font-size: 300%;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .instruction-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            background: #fcfcfc;
+            padding: 10px 20px;
+            border-radius: 50px;
+        }
+
+        .instruction-text {
+            font-size: 200%;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .game-layout {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 60px;
+            width: 100%;
+            max-width: 1300px;
+            position: relative;
+            z-index: 5;
+        }
+
+        #line-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .image-column {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            width: min-content;
+        }
+
+        .audio-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 300px;
+            align-items: center;
+        }
+
+        .drop-zone {
+            background: #f9f9f9;
+            border: 3px solid #bdc3c7;
+            border-radius: 15px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .drop-zone.selected { border-color: #3498db; background: #ebf5fb; }
+        .drop-zone.correct { border-color: #2ecc71; background: #e8f8f5; cursor: default; }
+
+        .animal-img {
+            width: 200px; 
+            height: 200px;
+            object-fit: contain;
+            pointer-events: none;
+        }
+
+        .sound-card {
+            background: #ffffff;
+            color: #000000;
+            border: 3px solid #3498db;
+            padding: 20px;
+            border-radius: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 1.8rem;
+            font-weight: bold;
+            width: 100%;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+
+        .sound-card:hover { transform: scale(1.02); }
+        .sound-card.selected { background: #3498db; color: white; }
+        .sound-card.matched { border-color: #2ecc71; opacity: 0.8; cursor: default; }
+
+        .audio-btn {
+            background: #ff9f43;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 0 #d35400;
+            flex-shrink: 0;
+        }
+
+        .audio-btn:active {
+            box-shadow: none;
+            transform: translateY(4px);
+        }
+
+        .success-message {
+            display: none;
+            color: #27ae60;
+            font-size: 2rem;
+            margin-top: 30px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .credits {
+            position: fixed;
+            bottom: 10px;
+            right: 15px;
+            font-size: 12px;
+            color: #7f8c8d;
+            z-index: 100;
+            background: rgba(255,255,255,0.8);
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+
+        .credits a {
+            color: #7f8c8d;
+            text-decoration: none;
+        }
+        
+        .credits a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="line-canvas"></canvas>
+
+    <div class="game-title">Який чий голос?</div>
+
+    <div class="instruction-container">
+        <button class="audio-btn" onclick="playSound('zav.mp3')">🔊</button>
+        <div class="instruction-text">З'єднай голос та його власника.</div>
+    </div>
+
+    <div class="game-layout" id="main-layout">
+        <div class="image-column" id="left-targets"></div>
+        
+        <div class="audio-column">
+            <div id="sounds-container" style="display: flex; flex-direction: column; gap: 20px; width: 100%;"></div>
+            <div id="win-text" class="success-message">Чудово! Ти знаєш голоси усіх тварин! 🎉</div>
+        </div>
+
+        <div class="image-column" id="right-targets"></div>
+    </div>
+
+    <div class="credits">
+        Звуки взято з <a href="https://pixabay.com/" target="_blank">pixabay.com</a>
+    </div>
+
+    <script>
+        const data = [
+            { id: 1, img: '1.png', sound: '11.mp3' },
+            { id: 2, img: '2.png', sound: '22.mp3' },
+            { id: 3, img: '3.png', sound: '33.mp3' },
+            { id: 4, img: '4.png', sound: '44.mp3' }
+        ];
+
+        let selectedId = null;
+        let selectedType = null;
+        let matchedCount = 0;
+        let connections = [];
+
+        const canvas = document.getElementById('line-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function playSound(file) {
+            const audio = new Audio(file);
+            audio.play().catch(e => console.log("Файл не знайдено: " + file));
+        }
+
+        window.onload = () => {
+            initGame();
+            resizeCanvas();
+        };
+
+        window.onresize = resizeCanvas;
+        window.onscroll = drawArrows;
+
+        function resizeCanvas() {
+            canvas.width = document.documentElement.scrollWidth;
+            canvas.height = document.documentElement.scrollHeight;
+            drawArrows();
+        }
+
+        function initGame() {
+            const leftCol = document.getElementById('left-targets');
+            const rightCol = document.getElementById('right-targets');
+            const soundsCol = document.getElementById('sounds-container');
+
+            data.forEach((item, index) => {
+                const zone = document.createElement('div');
+                zone.className = 'drop-zone';
+                zone.id = `target-${item.id}`;
+                zone.onclick = () => handleItemClick(item.id, 'target');
+                zone.innerHTML = `<img src="${item.img}" class="animal-img" alt="тварина">`;
+                
+                if (index < 2) leftCol.appendChild(zone);
+                else rightCol.appendChild(zone);
+            });
+
+            const shuffled = [...data].sort(() => Math.random() - 0.5);
+            shuffled.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'sound-card';
+                card.id = `sound-${item.id}`;
+                card.onclick = () => handleItemClick(item.id, 'sound');
+                card.innerHTML = `
+                    <button class="audio-btn" onclick="event.stopPropagation(); playSound('${item.sound}')">🔊</button>
+                    <span>Голос</span>
+                `;
+                soundsCol.appendChild(card);
+            });
+        }
+
+        function handleItemClick(id, type) {
+            const el = document.getElementById(`${type}-${id}`);
+            if (el.classList.contains('matched') || el.classList.contains('correct')) return;
+
+            if (selectedId === id && selectedType === type) {
+                clearSelection();
+                return;
+            }
+
+            if (!selectedType || selectedType === type) {
+                clearSelection();
+                selectedId = id;
+                selectedType = type;
+                el.classList.add('selected');
+                if (type === 'sound') playSound(data.find(d => d.id === id).sound);
+            } 
+            else {
+                if (selectedId === id) {
+                    const soundEl = document.getElementById(`sound-${id}`);
+                    const targetEl = document.getElementById(`target-${id}`);
+                    
+                    soundEl.classList.remove('selected');
+                    soundEl.classList.add('matched');
+                    targetEl.classList.remove('selected');
+                    targetEl.classList.add('correct');
+                    
+                    connections.push({ soundId: id, targetId: id });
+                    matchedCount++;
+                    clearSelection();
+                    drawArrows();
+
+                    if (matchedCount === data.length) {
+                        document.getElementById('win-text').style.display = 'block';
+                        setTimeout(() => playSound('win.mp3'), 500);
+                    }
+                } else {
+                    clearSelection();
+                    selectedId = id;
+                    selectedType = type;
+                    el.classList.add('selected');
+                    if (type === 'sound') playSound(data.find(d => d.id === id).sound);
+                }
+            }
+        }
+
+        function clearSelection() {
+            document.querySelectorAll('.sound-card, .drop-zone').forEach(el => el.classList.remove('selected'));
+            selectedId = null;
+            selectedType = null;
+        }
+
+        function drawArrows() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#3498db';
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+
+            connections.forEach(conn => {
+                const sEl = document.getElementById(`sound-${conn.soundId}`);
+                const tEl = document.getElementById(`target-${conn.targetId}`);
+                
+                const sRect = sEl.getBoundingClientRect();
+                const tRect = tEl.getBoundingClientRect();
+
+                let soundX;
+                const soundCenterY = sRect.top + sRect.height / 2 + window.scrollY;
+                let targetX;
+                const targetCenterY = tRect.top + tRect.height / 2 + window.scrollY;
+
+                if (tRect.left < sRect.left) {
+                    targetX = tRect.right + window.scrollX;
+                    soundX = sRect.left + window.scrollX;
+                } else {
+                    targetX = tRect.left + window.scrollX;
+                    soundX = sRect.right + window.scrollX;
+                }
+
+                ctx.beginPath();
+                ctx.moveTo(targetX, targetCenterY);
+                ctx.lineTo(soundX, soundCenterY);
+                ctx.stroke();
+
+                ctx.fillStyle = '#3498db';
+                ctx.beginPath();
+                ctx.arc(targetX, targetCenterY, 8, 0, Math.PI * 2);
+                ctx.arc(soundX, soundCenterY, 8, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+    </script>
+</body>
+</html>

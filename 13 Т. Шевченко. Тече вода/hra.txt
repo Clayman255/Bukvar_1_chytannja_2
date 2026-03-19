@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Гра "Встанови відповідність"</title>
+  <style>
+    :root {
+      --bg: #f0f7ff;
+      --accent: #4da6ff;
+      --bad: #ef4444;
+      --text-main: #000000;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+      overflow-x: auto;
+    }
+
+    header { text-align: center; margin-bottom: 20px; }
+    h1 { color: #2980b9; margin-bottom: 10px; }
+    .task-desc {
+      font-size: 1.2rem; background: #fff; padding: 12px 25px;
+      border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      border-left: 5px solid var(--accent); margin-bottom: 20px;
+      max-width: 900px;
+    }
+
+    .game-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      flex-direction: column;
+      gap: 60px;
+      align-items: center;
+    }
+
+    #line-canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .row {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      width: 100%;
+      z-index: 6;
+      flex-wrap: wrap;
+    }
+
+    .words-row {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      width: 100%;
+      z-index: 6;
+      flex-wrap: nowrap;
+    }
+
+    .item {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+      border: 3px solid transparent;
+      transition: all 0.2s;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #000;
+      font-weight: bold;
+      user-select: none;
+    }
+
+    .word-item {
+      padding: 10px 15px;
+      font-size: 32px; 
+      min-width: fit-content;
+      white-space: nowrap;
+    }
+
+    .img-item {
+      padding: 10px;
+      width: 280px;
+      height: 220px;
+    }
+
+    .img-item img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    .item.selected { border-color: var(--accent); background-color: #eef8ff; }
+    .item.error { animation: shake 0.4s; border-color: var(--bad); }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+
+    .win-message {
+      display: none; position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); background: white;
+      padding: 40px; border-radius: 25px; font-size: 2rem;
+      color: #16a34a; border: 6px solid #16a34a;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4); z-index: 100; text-align: center;
+    }
+
+    button.reset-btn {
+      margin-top: 20px; padding: 12px 25px; font-size: 18px;
+      background: var(--accent); color: white; border: none;
+      border-radius: 8px; cursor: pointer; font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Встанови відповідність</h1>
+  <div class="task-desc">З'єднай стрілками слово та зображення. Зверни увагу: до деяких зображень може підходити кілька слів.</div>
+</header>
+
+<div class="game-wrapper">
+  <svg id="line-canvas">
+    <defs>
+      <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="context-stroke" />
+      </marker>
+    </defs>
+  </svg>
+
+  <div class="row" id="row-top-imgs"></div>
+  <div class="words-row" id="row-words"></div>
+  <div class="row" id="row-bottom-imgs"></div>
+</div>
+
+<button class="reset-btn" id="btnReset">Почати спочатку</button>
+
+<div id="winMsg" class="win-message">Чудово! <br> Завдання виконано!</div>
+
+<script>
+  const words = [
+    { text: 'явір', matchId: 1 },
+    { text: 'гора', matchId: 2 },
+    { text: 'річка', matchId: [2, 4] },
+    { text: 'качаточка', matchId: 3 },
+    { text: 'качечка', matchId: 3 },
+    { text: 'качур', matchId: 3 },
+    { text: 'ряска', matchId: 4 },
+    { text: 'осока', matchId: 4 }
+  ];
+
+  const images = [
+    { src: '1.png', id: 1 },
+    { src: '2.png', id: 2 },
+    { src: '3.png', id: 3 },
+    { src: '4.png', id: 4 }
+  ];
+
+  const colors = ['#4da6ff', '#22c55e', '#a855f7', '#f59e0b', '#ec4899', '#6366f1', '#f97316', '#14b8a6'];
+  let activeElement = null;
+  let selectedType = null;
+  let matchedWordsCount = 0;
+
+  function initGame() {
+    const rowTop = document.getElementById('row-top-imgs');
+    const rowBottom = document.getElementById('row-bottom-imgs');
+    const rowWords = document.getElementById('row-words');
+    const canvas = document.getElementById('line-canvas');
+    
+    rowTop.innerHTML = ''; rowBottom.innerHTML = ''; rowWords.innerHTML = '';
+    canvas.querySelectorAll('line').forEach(l => l.remove());
+    matchedWordsCount = 0; activeElement = null; selectedType = null;
+    document.getElementById('winMsg').style.display = 'none';
+
+    // Зображення (1,2 вгору; 3,4 вниз)
+    images.forEach((img, index) => {
+      const div = document.createElement('div');
+      div.className = 'item img-item';
+      div.innerHTML = `<img src="${img.src}" alt="img" onerror="this.parentElement.textContent='Зображення ${img.id}'">`;
+      div.dataset.id = img.id;
+      div.onclick = () => handleSelect(div, 'img');
+      if (index < 2) rowTop.appendChild(div); else rowBottom.appendChild(div);
+    });
+
+    // Слова в ряд
+    [...words].sort(() => Math.random() - 0.5).forEach((word, idx) => {
+      const div = document.createElement('div');
+      div.className = 'item word-item';
+      div.textContent = word.text;
+      div.dataset.matchId = JSON.stringify(word.matchId);
+      div.dataset.color = colors[idx % colors.length];
+      div.onclick = () => handleSelect(div, 'word');
+      rowWords.appendChild(div);
+    });
+  }
+
+  function handleSelect(el, type) {
+    if (el.classList.contains('matched') && type === 'word') return;
+
+    if (!activeElement) {
+      activeElement = el;
+      selectedType = type;
+      el.classList.add('selected');
+    } else if (selectedType === type) {
+      activeElement.classList.remove('selected');
+      activeElement = el;
+      el.classList.add('selected');
+    } else {
+      const wordEl = type === 'word' ? el : activeElement;
+      const imgEl = type === 'img' ? el : activeElement;
+      
+      const allowedIds = JSON.parse(wordEl.dataset.matchId);
+      const imgId = parseInt(imgEl.dataset.id);
+
+      const isMatch = Array.isArray(allowedIds) ? allowedIds.includes(imgId) : allowedIds === imgId;
+
+      if (isMatch) {
+        wordEl.classList.add('matched');
+        const color = wordEl.dataset.color;
+        wordEl.style.borderColor = color;
+        drawArrow(wordEl, imgEl, color);
+        matchedWordsCount++;
+        if (matchedWordsCount === words.length) {
+          setTimeout(() => document.getElementById('winMsg').style.display = 'block', 500);
+        }
+      } else {
+        el.classList.add('error');
+        setTimeout(() => el.classList.remove('error'), 400);
+      }
+      activeElement.classList.remove('selected');
+      activeElement = null;
+      selectedType = null;
+    }
+  }
+
+  function drawArrow(el1, el2, color) {
+    const r1 = el1.getBoundingClientRect();
+    const r2 = el2.getBoundingClientRect();
+    const wr = document.querySelector('.game-wrapper').getBoundingClientRect();
+    
+    const c1x = r1.left + r1.width / 2 - wr.left;
+    const c2x = r2.left + r2.width / 2 - wr.left;
+
+    let x1, y1, x2, y2;
+
+    if (r1.bottom < r2.top) { // Слово вище зображення
+      x1 = c1x; y1 = r1.bottom - wr.top;
+      x2 = c2x; y2 = r2.top - wr.top;
+    } else { // Слово нижче зображення
+      x1 = c1x; y1 = r1.top - wr.top;
+      x2 = c2x; y2 = r2.bottom - wr.top;
+    }
+    
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+    line.setAttribute('stroke', color); line.setAttribute('stroke-width', '4');
+    line.setAttribute('marker-end', 'url(#arrowhead)');
+    document.getElementById('line-canvas').appendChild(line);
+  }
+
+  document.getElementById('btnReset').onclick = initGame;
+  window.addEventListener('resize', initGame);
+  initGame();
+</script>
+</body>
+</html>

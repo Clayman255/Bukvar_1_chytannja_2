@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Гра: Склади букви</title>
+    <style>
+        :root {
+            --bg: #f0fdf4;
+            --accent: #16a34a;
+            --dark-green: #14532d;
+            /* Розмір клітинок зменшено ще на 5% (157px * 0.95 ≈ 149px) */
+            --cell-size: 149px; 
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: var(--bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        h1 { color: #15803d; margin: 5px 0; font-size: 2.4rem; }
+
+        .instruction {
+            background: white;
+            padding: 10px 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 10px;
+            font-size: 1.65rem;
+            border-left: 5px solid var(--accent);
+            text-align: center;
+        }
+
+        .result-area {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .letter-placeholder {
+            width: var(--cell-size);
+            height: var(--cell-size);
+            background: white;
+            border: 2px dashed #a3e635;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .letter-placeholder img {
+            max-width: 90%;
+            max-height: 90%;
+            animation: popIn 0.4s ease-out;
+        }
+
+        .game-board {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 5;
+        }
+
+        .row {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .part-card {
+            width: var(--cell-size);
+            height: var(--cell-size);
+            background: white;
+            border: 3px solid #86efac;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .part-card img {
+            max-width: 90%;
+            max-height: 90%;
+            pointer-events: none;
+        }
+
+        .part-card.selected {
+            border-color: #3b82f6;
+            background: #eff6ff;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+        }
+
+        .part-card.correct {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.5);
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .success-banner {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px 60px;
+            border-radius: 30px;
+            font-size: 3rem;
+            font-weight: bold;
+            border: 8px solid #22c55e;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            z-index: 100;
+        }
+
+        .restart-btn {
+            display: none;
+            position: fixed;
+            bottom: 30px;
+            padding: 15px 40px;
+            font-size: 1.4rem;
+            font-weight: bold;
+            cursor: pointer;
+            background-color: white;
+            color: var(--dark-green);
+            border: 4px solid var(--accent);
+            border-radius: 50px;
+            transition: all 0.2s ease;
+            z-index: 101;
+        }
+
+        .restart-btn:hover {
+            background-color: var(--bg);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Склади букви</h1>
+    <div class="instruction">Натисни на дві частини букви, щоб утворилася ціла.</div>
+
+    <div class="result-area">
+        <div class="letter-placeholder" id="res-1"></div>
+        <div class="letter-placeholder" id="res-2"></div>
+        <div class="letter-placeholder" id="res-3"></div>
+        <div class="letter-placeholder" id="res-4"></div>
+        <div class="letter-placeholder" id="res-5"></div>
+        <div class="letter-placeholder" id="res-6"></div>
+    </div>
+
+    <div class="game-board" id="board">
+        <div class="row" id="top-row"></div>
+        <div class="row" id="bottom-row"></div>
+    </div>
+
+    <div id="win-message" class="success-banner">Чудово!</div>
+    <button id="retry-btn" class="restart-btn" onclick="resetGame()">Грати ще раз</button>
+
+    <script>
+        const config = [
+            { id: 1, p1: '11.png', p2: '111.png', whole: '1.png' },
+            { id: 2, p1: '22.png', p2: '222.png', whole: '2.png' },
+            { id: 3, p1: '33.png', p2: '333.png', whole: '3.png' },
+            { id: 4, p1: '44.png', p2: '444.png', whole: '4.png' },
+            { id: 5, p1: '55.png', p2: '555.png', whole: '5.png' },
+            { id: 6, p1: '66.png', p2: '666.png', whole: '6.png' }
+        ];
+
+        let selected = null;
+        let foundPairs = 0;
+
+        function init() {
+            const topRow = document.getElementById('top-row');
+            const bottomRow = document.getElementById('bottom-row');
+
+            topRow.innerHTML = '';
+            bottomRow.innerHTML = '';
+            selected = null;
+            foundPairs = 0;
+
+            const p1List = [...config].sort(() => Math.random() - 0.5);
+            const p2List = [...config].sort(() => Math.random() - 0.5);
+
+            p1List.forEach(item => topRow.appendChild(createCard(item.id, item.p1, 'top')));
+            p2List.forEach(item => bottomRow.appendChild(createCard(item.id, item.p2, 'bottom')));
+        }
+
+        function createCard(id, src, row) {
+            const card = document.createElement('div');
+            card.className = 'part-card';
+            card.id = `${row}-${id}`;
+            card.innerHTML = `<img src="${src}">`;
+            card.onclick = () => handleSelect(id, row);
+            return card;
+        }
+
+        function handleSelect(id, row) {
+            const el = document.getElementById(`${row}-${id}`);
+            if (el.classList.contains('correct')) return;
+
+            if (selected && selected.row !== row) {
+                if (selected.id === id) {
+                    document.getElementById(`top-${id}`).classList.add('correct');
+                    document.getElementById(`bottom-${id}`).classList.add('correct');
+                    
+                    foundPairs++;
+                    const placeholder = document.getElementById(`res-${foundPairs}`);
+                    const wholeImg = config.find(c => c.id === id).whole;
+                    placeholder.innerHTML = `<img src="${wholeImg}">`;
+                    
+                    if (foundPairs === config.length) {
+                        const winMsg = document.getElementById('win-message');
+                        const retryBtn = document.getElementById('retry-btn');
+                        
+                        winMsg.style.display = 'block';
+                        retryBtn.style.display = 'block';
+
+                        setTimeout(() => {
+                            winMsg.style.display = 'none';
+                        }, 5000);
+                    }
+                }
+                clearSelection();
+            } else {
+                clearSelection();
+                selected = { id, row };
+                el.classList.add('selected');
+            }
+        }
+
+        function clearSelection() {
+            document.querySelectorAll('.part-card').forEach(c => c.classList.remove('selected'));
+            selected = null;
+        }
+
+        function resetGame() {
+            for(let i=1; i<=6; i++) {
+                document.getElementById(`res-${i}`).innerHTML = '';
+            }
+            document.getElementById('win-message').style.display = 'none';
+            document.getElementById('retry-btn').style.display = 'none';
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

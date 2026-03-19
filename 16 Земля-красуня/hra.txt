@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Кольори природи</title>
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --accent: #8e44ad;
+      --success: #27ae60;
+      --text: #2c3e50;
+      --main-font: Arial, Helvetica, sans-serif;
+      --dark-blue: #1a5276; /* Темно-синій колір для кнопки */
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--main-font);
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+    }
+
+    header { text-align: center; margin-bottom: 20px; }
+    h1 { color: #2980b9; margin-bottom: 10px; font-size: 2.5rem; }
+    
+    .task-desc {
+      font-size: 1.5rem; background: #fff; padding: 15px 25px;
+      border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      max-width: 1000px; border-left: 6px solid #2980b9;
+      margin: 0 auto 30px auto;
+    }
+
+    .main-content {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      gap: 30px;
+      max-width: 1200px;
+      margin: 0 auto;
+      align-items: flex-start;
+    }
+
+    .names-sidebar {
+      position: -webkit-sticky;
+      position: sticky;
+      top: 20px;
+      flex: 1;
+      min-width: 350px;
+      background: #ffffff;
+      padding: 25px;
+      border-radius: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      border: 2px solid #dcdde1;
+    }
+
+    .draggable-name {
+      padding: 15px;
+      background: #f9f9f9;
+      border: 3px solid #3498db;
+      border-radius: 12px;
+      cursor: grab;
+      font-weight: bold;
+      font-size: 1.8rem;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+      user-select: none;
+      text-align: center;
+      transition: transform 0.2s;
+    }
+
+    .draggable-name:active { cursor: grabbing; transform: scale(0.98); }
+
+    .gallery-grid {
+      flex: 2;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+
+    .card {
+      background: #fff;
+      padding: 15px;
+      border-radius: 20px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 250px;
+      border: 4px solid transparent;
+    }
+
+    .card.winter { border-color: #a2d9ff; background: #f0faff; }
+    .card.spring { border-color: #a2ffb8; background: #f0fff4; }
+    .card.summer { border-color: #fffaa2; background: #fffff0; }
+    .card.autumn { border-color: #ffcba2; background: #fff5f0; }
+
+    .season-title {
+      font-size: 2rem;
+      font-weight: bold;
+      margin-bottom: 15px;
+      text-transform: uppercase;
+    }
+
+    .drop-zone {
+      width: 100%;
+      flex-grow: 1;
+      border: 3px dashed #bdc3c7;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      background: rgba(255,255,255,0.5);
+      transition: all 0.3s;
+      padding: 10px;
+      gap: 10px;
+    }
+
+    .drop-zone.hover { background: #e8f4fd; border-color: var(--accent); }
+
+    .matched-item {
+      width: 90%;
+      padding: 10px;
+      background: transparent;
+      color: #000;
+      border: 3px solid var(--success);
+      border-radius: 8px;
+      font-size: 1.4rem;
+      font-weight: bold;
+      text-align: center;
+      animation: popIn 0.3s ease-out;
+      box-sizing: border-box;
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .controls {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      margin-top: 40px;
+    }
+
+    /* Оновлений стиль кнопки: білий фон, темно-сині букви */
+    .reset-btn {
+      padding: 20px 40px; 
+      font-size: 1.5rem;
+      background: #ffffff; 
+      color: var(--dark-blue); 
+      border: 3px solid var(--dark-blue);
+      border-radius: 12px; 
+      cursor: pointer; 
+      font-weight: bold;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      transition: all 0.2s;
+    }
+
+    .reset-btn:hover { 
+      background: #f0f7ff;
+      transform: translateY(-2px);
+    }
+
+    .win-message {
+      display: none; position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); background: white;
+      padding: 40px; border-radius: 25px; font-size: 2.5rem;
+      color: var(--success); border: 8px solid var(--success);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4); z-index: 100; text-align: center;
+    }
+    
+    .wrong-flash { background: #fdedec !important; border-color: #e74c3c !important; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Кольори природи</h1>
+  <div class="task-desc">Розподіли словосполучення між порами року, для яких вони характерні.</div>
+</header>
+
+<div class="main-content">
+  <aside class="names-sidebar" id="namesPool">
+  </aside>
+
+  <main class="gallery-grid" id="galleryGrid">
+  </main>
+</div>
+
+<div class="controls">
+  <button class="reset-btn" onclick="location.reload()">Грати ще раз</button>
+</div>
+
+<div id="winMsg" class="win-message">Чудово!<br>Ти справжній знавець природи! 🌿✨</div>
+
+<script>
+  const data = [
+    { text: "біла шубка", season: "winter" },
+    { text: "блакитний лід", season: "winter" },
+    { text: "срібний іній", season: "winter" },
+    { text: "зелені паростки", season: "spring" },
+    { text: "сірі котики", season: "spring" },
+    { text: "білі підсніжники", season: "spring" },
+    { text: "червона ягода", season: "summer" },
+    { text: "золоте сонце", season: "summer" },
+    { text: "зелена трава", season: "summer" },
+    { text: "жовті крони", season: "autumn" },
+    { text: "сіра хмара", season: "autumn" },
+    { text: "коричневі поля", season: "autumn" }
+  ];
+
+  const seasons = [
+    { id: "winter", name: "Зима", class: "winter" },
+    { id: "spring", name: "Весна", class: "spring" },
+    { id: "summer", name: "Літо", class: "summer" },
+    { id: "autumn", name: "Осінь", class: "autumn" }
+  ];
+
+  let matchedCount = 0;
+
+  function initGame() {
+    const pool = document.getElementById('namesPool');
+    const grid = document.getElementById('galleryGrid');
+
+    const shuffledData = [...data].sort(() => Math.random() - 0.5);
+    shuffledData.forEach((item, index) => {
+      const div = document.createElement('div');
+      div.className = 'draggable-name';
+      div.textContent = item.text;
+      div.draggable = true;
+      div.id = `item-${index}`;
+      div.dataset.season = item.season;
+      div.addEventListener('dragstart', dragStart);
+      pool.appendChild(div);
+    });
+
+    seasons.forEach(s => {
+      const card = document.createElement('div');
+      card.className = `card ${s.class}`;
+      card.innerHTML = `
+        <div class="season-title">${s.name}</div>
+        <div class="drop-zone" data-season="${s.id}">Сюди...</div>
+      `;
+      grid.appendChild(card);
+      
+      const zone = card.querySelector('.drop-zone');
+      zone.addEventListener('dragover', dragOver);
+      zone.addEventListener('dragleave', dragLeave);
+      zone.addEventListener('drop', drop);
+    });
+  }
+
+  function dragStart(e) {
+    e.dataTransfer.setData('text/id', e.target.id);
+  }
+
+  function dragOver(e) {
+    e.preventDefault();
+    const zone = e.target.closest('.drop-zone');
+    if (zone) zone.classList.add('hover');
+  }
+
+  function dragLeave(e) {
+    const zone = e.target.closest('.drop-zone');
+    if (zone) zone.classList.remove('hover');
+  }
+
+  function drop(e) {
+    e.preventDefault();
+    const zone = e.target.closest('.drop-zone');
+    if (!zone) return;
+    zone.classList.remove('hover');
+
+    const itemId = e.dataTransfer.getData('text/id');
+    const itemEl = document.getElementById(itemId);
+    const itemSeason = itemEl.dataset.season;
+    const zoneSeason = zone.dataset.season;
+
+    if (itemSeason === zoneSeason) {
+      const matched = document.createElement('div');
+      matched.className = 'matched-item';
+      matched.textContent = itemEl.textContent;
+      zone.appendChild(matched);
+      
+      itemEl.style.display = 'none';
+      matchedCount++;
+
+      if (matchedCount === data.length) {
+        const winMsg = document.getElementById('winMsg');
+        winMsg.style.display = 'block';
+        setTimeout(() => {
+          winMsg.style.display = 'none';
+        }, 5000);
+      }
+    } else {
+      zone.classList.add('wrong-flash');
+      setTimeout(() => zone.classList.remove('wrong-flash'), 500);
+    }
+  }
+
+  initGame();
+</script>
+</body>
+</html>

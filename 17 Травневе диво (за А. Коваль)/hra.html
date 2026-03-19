@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Доповни опис</title>
+  <style>
+    :root {
+      --bg: #fdfaf5;
+      --accent: #2980b9;
+      --success: #27ae60;
+      --text: #000000;
+      --main-font: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--main-font);
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+    }
+
+    header { text-align: center; margin-bottom: 20px; }
+    h1 { color: #8e44ad; margin-bottom: 10px; font-size: 2.5rem; } 
+    
+    .task-desc {
+      font-size: 1.5rem; 
+      background: #fff; 
+      padding: 15px 25px;
+      border-radius: 12px; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      max-width: 1000px; 
+      border-left: 6px solid #8e44ad;
+      margin: 0 auto 30px auto;
+    }
+
+    .game-container {
+      display: flex;
+      flex-direction: row; 
+      justify-content: center;
+      max-width: 1200px;
+      margin: 0 auto;
+      gap: 30px;
+      align-items: flex-start;
+    }
+
+    .text-area {
+      flex: 2; 
+      background: #fff;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+      font-size: 2.4rem; 
+      line-height: 1.8;
+      text-align: justify;
+    }
+
+    .draggable-images {
+      flex: 0 0 200px; 
+      position: -webkit-sticky;
+      position: sticky;
+      top: 20px; 
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      background: #eee7f3;
+      padding: 20px;
+      border-radius: 20px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+      max-height: 80vh; 
+      overflow-y: auto; 
+    }
+
+    .draggable-item {
+      width: 130px;
+      height: 130px;
+      flex-shrink: 0;
+      background-color: #fff;
+      border: 3px solid #8e44ad;
+      border-radius: 15px;
+      cursor: grab;
+      user-select: none;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transition: all 0.3s ease; /* Плавне підстрибування вгору */
+    }
+
+    .draggable-item img {
+      max-width: 90%;
+      max-height: 90%;
+      pointer-events: none;
+    }
+
+    .drop-zone {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 150px;
+      height: 120px;
+      border: 3px dashed #bdc3c7;
+      border-radius: 12px;
+      background: #f9f9f9;
+      vertical-align: middle;
+      margin: 0 8px;
+      transition: all 0.3s;
+    }
+
+    .drop-zone.hover { background: #e8f4fd; border-color: var(--accent); }
+    .drop-zone.correct { 
+      border-color: var(--success); 
+      background: #eafaf1; 
+      border-style: solid;
+    }
+
+    .drop-zone img {
+      max-width: 95%;
+      max-height: 95%;
+      object-fit: contain;
+    }
+
+    .reset-btn {
+      padding: 15px 35px; 
+      font-size: 1.3rem; 
+      background: #8e44ad; 
+      color: white; 
+      border: none;
+      border-radius: 10px; 
+      cursor: pointer; 
+      font-weight: bold;
+      margin-top: 30px;
+    }
+
+    .win-message {
+      display: none; position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); background: white;
+      padding: 40px; border-radius: 25px; font-size: 2.5rem;
+      color: var(--success); border: 8px solid var(--success);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4); z-index: 100; text-align: center;
+    }
+
+    .draggable-images::-webkit-scrollbar { width: 8px; }
+    .draggable-images::-webkit-scrollbar-thumb { background: #8e44ad; border-radius: 10px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Доповни опис</h1>
+  <div class="task-desc">Перетягни малюнки у відповідні порожні місця в тексті.</div>
+</header>
+
+<div class="game-container">
+  <div class="text-area">
+    <span class="drop-zone" data-target="1"></span> — витончена лісова рослина з ніжними білими квітками, схожими на маленькі 
+    <span class="drop-zone" data-target="2"></span>. Вона має широкі 
+    <span class="drop-zone" data-target="3"></span>. Навесні 
+    <span class="drop-zone" data-target="1"></span> наповнює 
+    <span class="drop-zone" data-target="4"></span> приємним ароматом. Після цвітіння з’являються червоні 
+    <span class="drop-zone" data-target="5"></span>, які є небезпечними для людини.
+  </div>
+
+  <div class="draggable-images" id="pool">
+    </div>
+</div>
+
+<div style="text-align: center;">
+  <button class="reset-btn" onclick="location.reload()">Почати спочатку</button>
+</div>
+
+<div id="winMsg" class="win-message">Чудово!<br>Текст доповнено правильно! 🌿</div>
+
+<script>
+  const items = [
+    { id: "1", src: "1.png" },
+    { id: "2", src: "2.png" },
+    { id: "3", src: "3.png" },
+    { id: "4", src: "4.png" },
+    { id: "5", src: "5.png" }
+  ];
+
+  let matchedZones = 0;
+  const totalZones = document.querySelectorAll('.drop-zone').length;
+
+  function init() {
+    const pool = document.getElementById('pool');
+    const shuffled = [...items].sort(() => Math.random() - 0.5);
+
+    shuffled.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'draggable-item';
+      card.draggable = true;
+      card.id = `item-${item.id}`;
+      card.innerHTML = `<img src="${item.src}" alt="img">`;
+      
+      card.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/id', item.id);
+        e.dataTransfer.setData('text/elementId', card.id);
+      });
+      
+      pool.appendChild(card);
+    });
+
+    document.querySelectorAll('.drop-zone').forEach(zone => {
+      zone.addEventListener('dragover', (e) => e.preventDefault());
+      zone.addEventListener('dragenter', (e) => zone.classList.add('hover'));
+      zone.addEventListener('dragleave', () => zone.classList.remove('hover'));
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('hover');
+        
+        const droppedId = e.dataTransfer.getData('text/id');
+        const targetId = zone.dataset.target;
+
+        if (droppedId === targetId) {
+          const img = document.createElement('img');
+          img.src = `${droppedId}.png`;
+          zone.innerHTML = '';
+          zone.appendChild(img);
+          zone.classList.add('correct');
+          
+          const sameTargetZones = document.querySelectorAll(`.drop-zone[data-target="${droppedId}"]:not(.correct)`);
+          if (sameTargetZones.length === 0) {
+            const originalCard = document.getElementById(e.dataTransfer.getData('text/elementId'));
+            if (originalCard) {
+                originalCard.style.display = 'none'; // Видаляємо елемент, щоб нижні піднялися вгору
+            }
+          }
+
+          matchedZones++;
+          if (matchedZones === totalZones) {
+            const winMsg = document.getElementById('winMsg');
+            winMsg.style.display = 'block';
+            
+            // Таймер зникнення вітання через 5 секунд
+            setTimeout(() => {
+                winMsg.style.display = 'none';
+            }, 5000);
+          }
+        }
+      });
+    });
+  }
+
+  init();
+</script>
+</body>
+</html>

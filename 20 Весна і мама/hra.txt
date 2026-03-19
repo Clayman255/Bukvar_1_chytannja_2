@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Склади діалог</title>
+  <style>
+    :root {
+      --bg: #f8fbff;
+      --primary: #1a3a5f;
+      --accent: #3498db;
+      --success: #2ecc71;
+      --error: #e74c3c;
+      --white: #ffffff;
+      --grey: #f0f4f8;
+      --radius: 12px;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: #333;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header { width: 100%; text-align: center; margin-bottom: 30px; }
+    h1 { color: var(--primary); margin: 0 0 10px; font-size: 2.65rem; font-weight: 600; }
+    
+    .task-desc {
+      font-size: 1.35rem; 
+      background: var(--white); 
+      padding: 15px 25px;
+      border-radius: var(--radius); 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      max-width: 850px; 
+      border-top: 4px solid var(--accent);
+      margin: 0 auto 30px auto;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .pool-container {
+      background: var(--grey);
+      padding: 25px;
+      border-radius: 20px;
+      width: 100%;
+      max-width: 850px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 40px;
+      min-height: 100px;
+      border: 2px dashed #cbd5e0;
+    }
+
+    .dialogue-container {
+      width: 100%;
+      max-width: 850px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .replica {
+      padding: 16px 24px;
+      background: var(--white);
+      border: 2px solid #e2e8f0;
+      border-radius: var(--radius);
+      font-size: 1.4rem; 
+      font-weight: 500;
+      cursor: grab;
+      user-select: none;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    }
+
+    .replica:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .replica:active { cursor: grabbing; }
+
+    .replica.placed {
+      cursor: default;
+      border-color: var(--success);
+      background: var(--white);
+      transform: none;
+      box-shadow: none;
+    }
+
+    .drop-zone {
+      width: 100%;
+      min-height: 75px;
+      border: 2px dashed var(--accent);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(52, 152, 219, 0.05);
+      font-size: 1.4rem; 
+      color: var(--accent);
+      transition: all 0.3s;
+      font-weight: 600;
+    }
+
+    .drop-zone.active {
+      background: var(--white);
+      border-style: solid;
+    }
+
+    .drop-zone.wrong {
+      border-color: var(--error);
+      background: #fff5f5;
+      animation: shake 0.4s;
+      color: var(--error);
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
+    }
+
+    .win-message {
+      display: none;
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--white);
+      padding: 40px 80px;
+      border-radius: 30px;
+      font-size: 3rem;
+      font-weight: bold;
+      color: var(--success);
+      border: 3px solid var(--success);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+      z-index: 100;
+      text-align: center;
+    }
+
+    .reset-btn {
+      margin-top: 40px;
+      padding: 14px 40px;
+      font-size: 1.35rem;
+      background: var(--white);
+      color: var(--primary);
+      border: 2px solid var(--primary);
+      border-radius: 30px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+
+    .reset-btn:hover {
+      background: var(--primary);
+      color: var(--white);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Склади діалог</h1>
+  <div class="task-desc">Віднови розмову між донькою та мамою, перетягуючи репліки у правильному порядку.</div>
+</header>
+
+<div class="pool-container" id="pool"></div>
+<div class="dialogue-container" id="dialogue">
+  <div class="replica placed">Дівчинка: Матусю, а які квіти твої найулюбленіші?</div>
+</div>
+
+<button class="reset-btn" onclick="location.reload()">Почати спочатку</button>
+<div id="winMsg" class="win-message">Вдалося!</div>
+
+<script>
+  const replicas = [
+    { id: 1, speaker: "Мама", text: "Ті, що нагадують про сонечко. Кульбабки." },
+    { id: 2, speaker: "Дівчинка", text: "А якби я подарувала тобі особливу квітку?" },
+    { id: 3, speaker: "Мама", text: "Квіти від тебе — найдорожчі, бо в них ховається любов." },
+    { id: 4, speaker: "Дівчинка", text: "Тоді тримай цю «квітку щастя». Я сама її намалювала!" },
+    { id: 5, speaker: "Мама", text: "Дякую, рідна! Тепер це моя найулюблена квітка." }
+  ];
+
+  let step = 0;
+  const pool = document.getElementById('pool');
+  const dialogue = document.getElementById('dialogue');
+
+  function init() {
+    // В пул додаємо тільки чистий текст реплік
+    [...replicas].sort(() => Math.random() - 0.5).forEach(item => {
+      const el = document.createElement('div');
+      el.className = 'replica';
+      el.textContent = item.text;
+      el.draggable = true;
+      el.dataset.id = item.id;
+      el.ondragstart = (e) => e.dataTransfer.setData('id', item.id);
+      pool.appendChild(el);
+    });
+    renderZone();
+  }
+
+  function renderZone() {
+    if (step >= replicas.length) return showWin();
+    
+    const zone = document.createElement('div');
+    zone.className = 'drop-zone active';
+    
+    // Встановлюємо текст зони відповідно до того, хто має говорити наступним
+    const nextSpeaker = replicas[step].speaker;
+    zone.textContent = nextSpeaker + ": ..."; 
+    
+    zone.ondragover = (e) => e.preventDefault();
+    zone.ondrop = (e) => tryPlace(parseInt(e.dataTransfer.getData('id')), document.querySelector(`[data-id="${e.dataTransfer.getData('id')}"]`));
+    dialogue.appendChild(zone);
+  }
+
+  function tryPlace(id, el) {
+    if (!el) return;
+    const zone = dialogue.lastElementChild;
+    const currentData = replicas[step];
+
+    if (id === currentData.id) {
+      zone.className = 'replica placed';
+      zone.textContent = currentData.speaker + ": " + currentData.text;
+      el.remove();
+      step++;
+      renderZone();
+    } else {
+      zone.classList.add('wrong');
+      // При помилці текст повертається до початкового стану через пів секунди
+      const originalText = zone.textContent;
+      setTimeout(() => zone.classList.remove('wrong'), 500);
+    }
+  }
+
+  function showWin() {
+    const msg = document.getElementById('winMsg');
+    msg.style.display = 'block';
+    setTimeout(() => msg.style.display = 'none', 5000);
+  }
+
+  init();
+</script>
+</body>
+</html>

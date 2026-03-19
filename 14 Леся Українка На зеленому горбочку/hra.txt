@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Гра "Встанови відповідність"</title>
+  <style>
+    :root {
+      --bg: #f0f7ff;
+      --accent: #4da6ff;
+      --bad: #ef4444;
+      --text-main: #000000;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+      overflow-x: auto;
+    }
+
+    header { text-align: center; margin-bottom: 20px; }
+    h1 { color: #2980b9; margin-bottom: 10px; }
+    .task-desc {
+      font-size: 1.2rem; background: #fff; padding: 12px 25px;
+      border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      border-left: 5px solid var(--accent); margin-bottom: 20px;
+      max-width: 900px;
+    }
+
+    .game-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 1000px; /* Ширина для двох колонок */
+      display: flex;
+      justify-content: center;
+      gap: 150px; /* Відстань між колонками */
+      align-items: flex-start; /* Вирівнювання по верху */
+      min-height: 500px; /* Мінімальна висота для стрілок */
+    }
+
+    #line-canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .column {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      width: 40%; /* Ширина колонки */
+      z-index: 6;
+    }
+
+    .item {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+      border: 3px solid transparent;
+      transition: all 0.2s;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #000;
+      font-weight: bold;
+      user-select: none;
+      padding: 15px 20px;
+      font-size: 28px; /* Досить великий шрифт */
+      min-height: 60px;
+    }
+
+    .item.selected { border-color: var(--accent); background-color: #eef8ff; }
+    .item.matched { cursor: default; opacity: 0.8; }
+    .item.error { animation: shake 0.4s; border-color: var(--bad); }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+
+    .win-message {
+      display: none; position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); background: white;
+      padding: 40px; border-radius: 25px; font-size: 2rem;
+      color: #16a34a; border: 6px solid #16a34a;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4); z-index: 100; text-align: center;
+    }
+
+    button.reset-btn {
+      margin-top: 20px; padding: 12px 25px; font-size: 18px;
+      background: var(--accent); color: white; border: none;
+      border-radius: 8px; cursor: pointer; font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Встанови відповідність</h1>
+  <div class="task-desc">Знайди рими до слів. З'єднай стрілками.</div>
+</header>
+
+<div class="game-wrapper">
+  <svg id="line-canvas">
+    <defs>
+      <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+        <polygon points="0 0, 10 3.5, 0 7" fill="context-stroke" />
+      </marker>
+    </defs>
+  </svg>
+
+  <div class="column" id="column-left"></div>
+  <div class="column" id="column-right"></div>
+</div>
+
+<button class="reset-btn" id="btnReset">Почати спочатку</button>
+
+<div id="winMsg" class="win-message">Чудово! <br> Завдання виконано!</div>
+
+<script>
+  const rhymePairs = [
+    { left: 'горбочку', right: 'садочку', id: 1 },
+    { left: 'хатинка', right: 'дитинка', id: 2 },
+    { left: 'виглядати', right: 'мати', id: 3 },
+    { left: 'засвітило', right: 'звеселило', id: 4 },
+    { left: 'хатинки', right: 'дитинки', id: 5 }
+  ];
+
+  const colors = ['#4da6ff', '#22c55e', '#a855f7', '#f59e0b', '#ec4899'];
+  let activeElement = null;
+  let matchedCount = 0;
+
+  function initGame() {
+    const columnLeft = document.getElementById('column-left');
+    const columnRight = document.getElementById('column-right');
+    const canvas = document.getElementById('line-canvas');
+    
+    columnLeft.innerHTML = '';
+    columnRight.innerHTML = '';
+    canvas.querySelectorAll('line').forEach(l => l.remove());
+    matchedCount = 0; activeElement = null;
+    document.getElementById('winMsg').style.display = 'none';
+
+    const shuffledLeft = [...rhymePairs].sort(() => Math.random() - 0.5);
+    const shuffledRight = [...rhymePairs].sort(() => Math.random() - 0.5);
+
+    shuffledLeft.forEach((pair, index) => {
+      const div = document.createElement('div');
+      div.className = 'item';
+      div.textContent = pair.left;
+      div.dataset.id = pair.id;
+      div.dataset.type = 'left';
+      div.dataset.color = colors[index % colors.length]; // Колір для візуалізації
+      div.onclick = () => handleSelect(div);
+      columnLeft.appendChild(div);
+    });
+
+    shuffledRight.forEach((pair, index) => {
+      const div = document.createElement('div');
+      div.className = 'item';
+      div.textContent = pair.right;
+      div.dataset.id = pair.id;
+      div.dataset.type = 'right';
+      // div.dataset.color = colors[index % colors.length]; // Можна також додати для правої колонки, якщо потрібно
+      div.onclick = () => handleSelect(div);
+      columnRight.appendChild(div);
+    });
+  }
+
+  function handleSelect(el) {
+    if (el.classList.contains('matched')) return;
+
+    if (!activeElement) {
+      activeElement = el;
+      el.classList.add('selected');
+    } else if (activeElement.dataset.type === el.dataset.type) {
+      // Якщо обрали два елементи одного типу (дві ліві або дві праві)
+      activeElement.classList.remove('selected');
+      activeElement = el;
+      el.classList.add('selected');
+    } else {
+      // Якщо обрали два елементи різних типів
+      if (activeElement.dataset.id === el.dataset.id) {
+        // Знайдено правильну риму
+        const leftEl = activeElement.dataset.type === 'left' ? activeElement : el;
+        const rightEl = activeElement.dataset.type === 'right' ? activeElement : el;
+
+        const color = leftEl.dataset.color; // Використовуємо колір з лівого елемента
+
+        leftEl.classList.add('matched');
+        rightEl.classList.add('matched');
+        drawArrow(leftEl, rightEl, color);
+        matchedCount++;
+        if (matchedCount === rhymePairs.length) {
+          setTimeout(() => document.getElementById('winMsg').style.display = 'block', 500);
+        }
+      } else {
+        // Неправильна рима
+        el.classList.add('error');
+        setTimeout(() => el.classList.remove('error'), 400);
+      }
+      activeElement.classList.remove('selected');
+      activeElement = null;
+    }
+  }
+
+  function drawArrow(el1, el2, color) {
+    const r1 = el1.getBoundingClientRect();
+    const r2 = el2.getBoundingClientRect();
+    const wr = document.querySelector('.game-wrapper').getBoundingClientRect();
+    
+    let x1, y1, x2, y2;
+
+    // Стрілка завжди йде від правого краю лівого елемента до лівого краю правого елемента
+    x1 = r1.right - wr.left;
+    y1 = r1.top + r1.height / 2 - wr.top;
+    x2 = r2.left - wr.left;
+    y2 = r2.top + r2.height / 2 - wr.top;
+    
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+    line.setAttribute('stroke', color); line.setAttribute('stroke-width', '4');
+    line.setAttribute('marker-end', 'url(#arrowhead)');
+    document.getElementById('line-canvas').appendChild(line);
+  }
+
+  document.getElementById('btnReset').onclick = initGame;
+  window.addEventListener('resize', initGame);
+  initGame();
+</script>
+</body>
+</html>

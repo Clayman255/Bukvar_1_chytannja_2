@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Гра: Однакові склади</title>
+    <style>
+        :root {
+            --bg: #fdf5e6;
+            --accent: #5d4037;
+            --success-bg: #ffffff;
+            --success-border: #22c55e;
+            --success-text: #166534;
+            --text: #000000;
+            --title-color: #4e342e;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .game-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--title-color);
+            margin-bottom: 15px;
+        }
+
+        .instruction-container {
+            background: #fff;
+            padding: 15px 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border-bottom: 5px solid var(--accent);
+            margin-bottom: 30px;
+            font-size: 1.4rem;
+            font-weight: bold;
+        }
+
+        .game-layout {
+            display: grid;
+            grid-template-columns: 320px 320px;
+            gap: 150px;
+            justify-content: center;
+            position: relative;
+            z-index: 5;
+        }
+
+        #line-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .item-card {
+            background: #fff;
+            border: 3px solid #d7ccc8;
+            border-radius: 20px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .item-card.selected { border-color: #3498db; background: #ebf5fb; }
+        .item-card.correct { border-color: var(--success-border); cursor: default; }
+
+        .item-img {
+            width: 200px;
+            height: 150px;
+            object-fit: contain;
+            margin-bottom: 10px;
+            pointer-events: none;
+        }
+
+        .item-text {
+            font-size: 1.8rem;
+            font-weight: bold;
+            font-family: 'Arial', sans-serif;
+        }
+
+        .success-message {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--success-bg);
+            color: var(--success-text);
+            border: 5px solid var(--success-border);
+            padding: 30px 60px;
+            border-radius: 50px;
+            font-size: 3rem;
+            font-weight: bold;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .restart-btn {
+            display: none;
+            margin-top: 40px;
+            padding: 12px 30px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: #fff;
+            border: 2px solid #000;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="line-canvas"></canvas>
+
+    <div class="game-title">Однакові склади</div>
+
+    <div class="instruction-container">
+        З'єднай стрілками слова з однаковими складами.
+    </div>
+
+    <div class="game-layout">
+        <div class="column" id="left-col"></div>
+        <div class="column" id="right-col"></div>
+    </div>
+
+    <div id="win-banner" class="success-message">Ура! Все вдалося!</div>
+    <button id="restart-btn" class="restart-btn" onclick="restartGame()">Ще раз</button>
+
+    <script>
+        const pairs = [
+            { left: { id: 1, text: 'сова', img: '1.png' }, right: { id: 1, text: 'трава', img: '2.png' } },
+            { left: { id: 2, text: 'молоко', img: '3.png' }, right: { id: 2, text: 'мотоцикл', img: '4.png' } },
+            { left: { id: 3, text: 'ріка', img: '5.png' }, right: { id: 3, text: 'рука', img: '6.png' } },
+            { left: { id: 4, text: 'калина', img: '7.png' }, right: { id: 4, text: 'малина', img: '8.png' } }
+        ];
+
+        let selected = null;
+        let connections = [];
+        const canvas = document.getElementById('line-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function init() {
+            const leftCol = document.getElementById('left-col');
+            const rightCol = document.getElementById('right-col');
+            leftCol.innerHTML = '';
+            rightCol.innerHTML = '';
+            connections = [];
+            resizeCanvas();
+
+            const leftItems = pairs.map(p => p.left).sort(() => Math.random() - 0.5);
+            const rightItems = pairs.map(p => p.right).sort(() => Math.random() - 0.5);
+
+            leftItems.forEach(item => leftCol.appendChild(createCard(item, 'left')));
+            rightItems.forEach(item => rightCol.appendChild(createCard(item, 'right')));
+        }
+
+        function createCard(item, side) {
+            const card = document.createElement('div');
+            card.className = 'item-card';
+            card.id = `${side}-${item.id}`;
+            card.innerHTML = `<img src="${item.img}" class="item-img"><div class="item-text">${item.text}</div>`;
+            card.onclick = () => handleSelect(item.id, side);
+            return card;
+        }
+
+        function handleSelect(id, side) {
+            const el = document.getElementById(`${side}-${id}`);
+            if (el.classList.contains('correct')) return;
+
+            if (selected && selected.side !== side) {
+                if (selected.id === id) {
+                    document.getElementById(`left-${id}`).classList.add('correct');
+                    document.getElementById(`right-${id}`).classList.add('correct');
+                    connections.push(id);
+                    drawLines();
+                    if (connections.length === pairs.length) showWin();
+                }
+                clearSelection();
+            } else {
+                clearSelection();
+                selected = { id, side };
+                el.classList.add('selected');
+            }
+        }
+
+        function clearSelection() {
+            document.querySelectorAll('.item-card').forEach(c => c.classList.remove('selected'));
+            selected = null;
+        }
+
+        function drawLines() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#22c55e';
+            ctx.lineWidth = 4;
+            
+            connections.forEach(id => {
+                const l = document.getElementById(`left-${id}`).getBoundingClientRect();
+                const r = document.getElementById(`right-${id}`).getBoundingClientRect();
+                
+                const startX = l.right + window.scrollX;
+                const startY = l.top + l.height / 2 + window.scrollY;
+                const endX = r.left + window.scrollX;
+                const endY = r.top + r.height / 2 + window.scrollY;
+
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+
+                // Малюємо стрілочку
+                const angle = Math.atan2(endY - startY, endX - startX);
+                ctx.beginPath();
+                ctx.moveTo(endX, endY);
+                ctx.lineTo(endX - 15 * Math.cos(angle - Math.PI / 6), endY - 15 * Math.sin(angle - Math.PI / 6));
+                ctx.moveTo(endX, endY);
+                ctx.lineTo(endX - 15 * Math.cos(angle + Math.PI / 6), endY - 15 * Math.sin(angle + Math.PI / 6));
+                ctx.stroke();
+            });
+        }
+
+        function showWin() {
+            const banner = document.getElementById('win-banner');
+            banner.style.display = 'block';
+            setTimeout(() => {
+                banner.style.display = 'none';
+                document.getElementById('restart-btn').style.display = 'block';
+            }, 5000);
+        }
+
+        function restartGame() {
+            document.getElementById('restart-btn').style.display = 'none';
+            init();
+        }
+
+        function resizeCanvas() {
+            canvas.width = document.documentElement.scrollWidth;
+            canvas.height = document.documentElement.scrollHeight;
+            drawLines();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        window.onload = init;
+    </script>
+</body>
+</html>

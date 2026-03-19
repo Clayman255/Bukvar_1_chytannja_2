@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Відгадай!</title>
+
+  <style>
+    :root{
+      --bg:#fbf6ee;
+      --accent:#ffd84d;
+      --shadow:rgba(0,0,0,.10);
+      --bad:#ef4444;
+      --good:#22c55e;
+      --text:#2c3e50;
+      --orange:#d35400;
+    }
+
+    body{
+      margin:0;
+      font-family: Arial, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      min-height:100vh;
+      padding:10px;
+    }
+
+    h1{
+      margin:0 0 8px;
+      font-size:2rem;
+      color:var(--orange);
+      text-align:center;
+    }
+
+    .task{
+      font-size:1.1rem;
+      font-weight:700;
+      background:#fff;
+      padding:8px 15px;
+      border-radius:12px;
+      box-shadow:0 2px 8px rgba(0,0,0,.05);
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      margin-bottom:14px;
+    }
+
+    .snd{
+      border:0;
+      background:var(--accent);
+      width:36px;
+      height:36px;
+      border-radius:50%;
+      box-shadow:0 3px 6px var(--shadow);
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:16px;
+    }
+
+    .wrap{
+      width:100%;
+      max-width:1400px;
+      display:grid;
+      grid-template-columns:1fr;
+      gap:18px;
+    }
+
+    @media (min-width:1100px){
+      .wrap{
+        grid-template-columns:1fr 1.05fr 1fr;
+      }
+    }
+
+    .riddles-col{
+      display:grid;
+      gap:12px;
+    }
+
+    .riddle{
+      background:#fff;
+      border-radius:14px;
+      padding:12px;
+      box-shadow:0 4px 10px rgba(0,0,0,.05);
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      min-height:240px;
+    }
+
+    .rtop{
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+    }
+
+    .rtext{
+      font-size:16px;
+      font-weight:700;
+      line-height:1.25;
+      white-space:pre-line;
+    }
+
+    .drop{
+      flex:1;
+      border:2px dashed rgba(44,62,80,.25);
+      border-radius:14px;
+      background:rgba(255,216,77,.1);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .drop.locked{
+      border-style:solid;
+      border-color:rgba(34,197,94,.6);
+      background:rgba(34,197,94,.1);
+    }
+
+    .chip img{
+      width:100%;
+      max-height:220px;
+      object-fit:contain;
+    }
+
+    .bank-wrapper{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+    }
+
+    .bank{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:18px;
+    }
+
+    .item{
+      width:240px;
+      height:240px;
+      background:#fff;
+      border-radius:22px;
+      box-shadow:0 12px 24px rgba(0,0,0,.14);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:grab;
+      padding:14px;
+    }
+
+    .item img{
+      width:100%;
+      height:100%;
+      object-fit:contain;
+    }
+
+    .item.used{
+      opacity:.1;
+      filter:grayscale(1);
+      cursor:default;
+    }
+
+    .win-message{
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(255,255,255,.95);
+      color:#22c55e;
+      font-size:2.5rem;
+      font-weight:900;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      gap:20px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Відгадай!</h1>
+
+<div class="task">
+  <button class="snd" data-a="zv0">🔊</button>
+  <span>Розмісти зображення відгадки біля загадки.</span>
+</div>
+
+<div class="wrap">
+  <section id="left" class="riddles-col"></section>
+
+  <section class="bank-wrapper">
+    <div class="bank" id="bank"></div>
+  </section>
+
+  <section id="right" class="riddles-col"></section>
+</div>
+
+<div id="win" class="win-message">
+  <div>Ура! Все вдалося!</div>
+</div>
+
+<audio id="zv0" src="zv0.mp3"></audio>
+<audio id="au1" src="au1.mp3"></audio>
+<audio id="au2" src="au2.mp3"></audio>
+<audio id="au3" src="au3.mp3"></audio>
+<audio id="au4" src="au4.mp3"></audio>
+
+<script>
+const riddles = [
+  {
+    id:1,
+    audio:"au1",
+    text:
+`На однім кінці – дивак,
+А на другому – черв’як.
+Увесь день на черв’яка
+Всі надії в дивака.`,
+    img:"im1.png"
+  },
+  {
+    id:2,
+    audio:"au2",
+    text:
+`На собі я ношу дім,
+Від хижаків ховаюсь в нім.`,
+    img:"im2.png"
+  },
+  {
+    id:3,
+    audio:"au3",
+    text:
+`Живий – чорний,
+А як звариться – червоний.`,
+    img:"im3.png"
+  },
+  {
+    id:4,
+    audio:"au4",
+    text:
+`Крила має, та не літає,
+Ніг не має, а гуляє,
+По землі не ходить
+І людей не знає.`,
+    img:"im4.png"
+  }
+];
+
+const left = document.getElementById("left");
+const right = document.getElementById("right");
+const bank = document.getElementById("bank");
+const win = document.getElementById("win");
+
+let placed = new Map();
+let used = new Set();
+
+riddles.forEach((r,i)=>{
+  const card = document.createElement("div");
+  card.className="riddle";
+  card.innerHTML=`
+    <div class="rtop">
+      <button class="snd" data-a="${r.audio}">🔊</button>
+      <div class="rtext">${r.text.replace(/\n/g,"<br>")}</div>
+    </div>
+    <div class="drop" data-id="${r.id}"></div>
+  `;
+  (i<2?left:right).appendChild(card);
+});
+
+["im1.png","im2.png","im3.png","im4.png"].forEach(src=>{
+  const el=document.createElement("div");
+  el.className="item";
+  el.draggable=true;
+  el.dataset.img=src;
+  el.innerHTML=`<img src="${src}">`;
+  el.ondragstart=e=>e.dataTransfer.setData("img",src);
+  bank.appendChild(el);
+});
+
+document.querySelectorAll(".drop").forEach(zone=>{
+  zone.ondragover=e=>e.preventDefault();
+  zone.ondrop=e=>{
+    e.preventDefault();
+    if(zone.classList.contains("locked")) return;
+    const img=e.dataTransfer.getData("img");
+    const id=+zone.dataset.id;
+    const r=riddles.find(x=>x.id===id);
+    if(!img||used.has(img)) return;
+
+    zone.innerHTML=`<div class="chip"><img src="${img}"></div>`;
+    used.add(img);
+    document.querySelector(`.item[data-img="${img}"]`).classList.add("used");
+
+    if(img===r.img){
+      zone.classList.add("locked");
+      placed.set(id,img);
+      if(placed.size===4) win.style.display="flex";
+    }
+  };
+});
+
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-a]");
+  if(!b) return;
+  document.querySelectorAll("audio").forEach(a=>{a.pause();a.currentTime=0;});
+  document.getElementById(b.dataset.a).play();
+});
+</script>
+
+</body>
+</html>

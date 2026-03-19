@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вікторина про транспорт</title>
+    <style>
+        :root {
+            --bg: #fdfcf0;
+            --accent: #3498db;
+            --success: #22c55e;
+            --error: #ef4444;
+            --text: #2c3e50;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            margin: 0;
+        }
+
+        header { text-align: center; margin-bottom: 20px; }
+        h1 { font-size: 2.5rem; color: #2980b9; margin-bottom: 10px; }
+
+        .task-desc {
+            font-size: 1.3rem; 
+            background: #fff; 
+            padding: 15px 25px;
+            border-radius: 15px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            max-width: 800px; 
+            border-bottom: 5px solid var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .quiz-container {
+            width: 100%;
+            max-width: 700px;
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .progress {
+            font-size: 1.1rem;
+            color: #64748b;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .question-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .question-text {
+            font-size: 1.6rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .main-img {
+            max-width: 100%;
+            height: 250px;
+            object-fit: contain;
+            border-radius: 12px;
+            background: #f8fafc;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        /* Стиль для сітки з 3-х картинок */
+        .options-grid.image-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .option-btn {
+            padding: 15px;
+            font-size: 1.4rem;
+            background: #ffffff;
+            border: 3px solid #e2e8f0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .option-btn:hover { border-color: var(--accent); background: #f0f9ff; }
+
+        .option-btn.correct {
+            border-color: var(--success) !important;
+            background-color: #f0fff4 !important;
+        }
+
+        .option-btn.wrong {
+            border-color: var(--error) !important;
+            animation: shake 0.4s ease-in-out;
+        }
+
+        .img-option {
+            border: 3px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+        }
+        .img-option:hover { border-color: var(--accent); transform: scale(1.03); }
+        .img-option img { width: 100%; height: 120px; object-fit: contain; }
+        .img-option.correct { border-color: var(--success) !important; background: #f0fff4; }
+        .img-option.wrong { border-color: var(--error) !important; animation: shake 0.4s ease-in-out; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+
+        .audio-btn {
+            background: #ff9f43;
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 0 #d35400;
+        }
+        .audio-btn:active { transform: translateY(3px); box-shadow: none; }
+
+        .win-screen {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+        .win-screen h2 { font-size: 3rem; color: var(--success); }
+
+        .reset-btn {
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            background: white;
+            border: 3px solid var(--accent);
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Вікторина про транспорт</h1>
+    <div class="task-desc">
+        <button class="audio-btn" onclick="playSound('zav.mp3')">🔊</button>
+        <span>Обери правильну відповідь.</span>
+    </div>
+</header>
+
+<div class="quiz-container" id="quiz">
+    <div class="progress" id="progress">Питання 1 з 5</div>
+    
+    <div class="question-box">
+        <div class="question-text" id="q-text"></div>
+        <div id="q-image-container"></div>
+    </div>
+
+    <div class="options-grid" id="options"></div>
+</div>
+
+<div class="win-screen" id="win-screen">
+    <h2>Ура! Вдалося! 🎉</h2>
+    <button class="reset-btn" onclick="location.reload()">Зіграти ще раз</button>
+</div>
+
+<script>
+    const quizData = [
+        {
+            q: "Який це транспорт?",
+            qAudio: "0.mp3",
+            img: "1.png",
+            type: "text",
+            options: [
+                { text: "пасажирський", audio: "1.mp3", correct: false },
+                { text: "вантажний", audio: "2.mp3", correct: true },
+                { text: "морський", audio: "3.mp3", correct: false }
+            ]
+        },
+        {
+            q: "Який це транспорт?",
+            qAudio: "0.mp3",
+            img: "2.png",
+            type: "text",
+            options: [
+                { text: "пасажирський", audio: "1.mp3", correct: true },
+                { text: "вантажний", audio: "2.mp3", correct: false },
+                { text: "морський", audio: "3.mp3", correct: false }
+            ]
+        },
+        {
+            q: "Який це транспорт?",
+            qAudio: "0.mp3",
+            img: "3.png",
+            type: "text",
+            options: [
+                { text: "повітряний", audio: "4.mp3", correct: false },
+                { text: "наземний", audio: "5.mp3", correct: false },
+                { text: "морський", audio: "3.mp3", correct: true }
+            ]
+        },
+        {
+            q: "На змаганнях з мотокросу використовують …",
+            qAudio: "6.mp3",
+            type: "image",
+            options: [
+                { img: "4.png", correct: true },
+                { img: "5.png", correct: false },
+                { img: "6.png", correct: false }
+            ]
+        },
+        {
+            q: "У вітрильному спорті використовують …",
+            qAudio: "7.mp3",
+            type: "image",
+            options: [
+                { img: "7.png", correct: true },
+                { img: "8.png", correct: false },
+                { img: "9.png", correct: false }
+            ]
+        }
+    ];
+
+    let currentStep = 0;
+
+    function playSound(file) {
+        new Audio(file).play().catch(e => console.log("Файл не знайдено: " + file));
+    }
+
+    function loadQuestion() {
+        const data = quizData[currentStep];
+        document.getElementById('progress').textContent = `Питання ${currentStep + 1} з ${quizData.length}`;
+        
+        // Текст питання з іконкою звуку
+        document.getElementById('q-text').innerHTML = `
+            <button class="audio-btn" onclick="playSound('${data.qAudio}')">🔊</button>
+            <span>${data.q}</span>
+        `;
+
+        // Малюнок до питання (якщо є)
+        const imgContainer = document.getElementById('q-image-container');
+        imgContainer.innerHTML = data.img ? `<img src="${data.img}" class="main-img">` : '';
+
+        const optionsContainer = document.getElementById('options');
+        optionsContainer.innerHTML = '';
+
+        if (data.type === 'text') {
+            optionsContainer.className = 'options-grid';
+            data.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerHTML = `
+                    <span>${opt.text}</span>
+                    <div class="audio-btn" onclick="event.stopPropagation(); playSound('${opt.audio}')">🔊</div>
+                `;
+                btn.onclick = () => checkAnswer(opt.correct, btn);
+                optionsContainer.appendChild(btn);
+            });
+        } else {
+            optionsContainer.className = 'options-grid image-grid';
+            data.options.forEach(opt => {
+                const div = document.createElement('div');
+                div.className = 'img-option';
+                div.innerHTML = `<img src="${opt.img}">`;
+                div.onclick = () => checkAnswer(opt.correct, div);
+                optionsContainer.appendChild(div);
+            });
+        }
+    }
+
+    function checkAnswer(isCorrect, element) {
+        if (isCorrect) {
+            element.classList.add('correct');
+            document.querySelectorAll('.option-btn, .img-option').forEach(el => el.style.pointerEvents = 'none');
+            
+            setTimeout(() => {
+                currentStep++;
+                if (currentStep < quizData.length) {
+                    loadQuestion();
+                } else {
+                    showWin();
+                }
+            }, 1200);
+        } else {
+            element.classList.add('wrong');
+            setTimeout(() => element.classList.remove('wrong'), 400);
+        }
+    }
+
+    function showWin() {
+        document.getElementById('quiz').style.display = 'none';
+        document.getElementById('win-screen').style.display = 'block';
+    }
+
+    window.onload = loadQuestion;
+</script>
+</body>
+</html>

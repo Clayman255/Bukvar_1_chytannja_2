@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Гра "Великдень"</title>
+  <style>
+    :root {
+      --bg: #f5f5dc; /* Світло-бежевий фон */
+      --success: #27ae60;
+      --error: #e74c3c;
+      --brown: #8b4513; /* Коричневий колір */
+      --text: #000000;
+      --main-font: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--main-font);
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header { text-align: center; margin-bottom: 30px; }
+    h1 { color: var(--brown); margin-bottom: 10px; font-size: 2.5rem; }
+    
+    .task-desc {
+      font-size: 1.5rem; 
+      background: #fff; 
+      padding: 15px 25px;
+      border-radius: 12px; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      max-width: 800px; 
+      border-left: 6px solid var(--brown);
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    .words-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      max-width: 800px;
+      width: 100%;
+    }
+
+    .word-card {
+      background: #ffffff;
+      border: 6px solid var(--brown); /* Контур вдвічі товстіший (було 3px) */
+      border-radius: 15px;
+      padding: 25px;
+      font-size: 1.8rem;
+      font-weight: bold;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      transition: border-color 0.2s ease, transform 0.2s ease;
+      color: #000;
+    }
+
+    /* Правильна відповідь: зелений контур */
+    .word-card.correct {
+      border-color: var(--success);
+      background-color: #ffffff;
+      color: #000;
+      cursor: default;
+    }
+
+    /* Тимчасова підсвітка при помилці */
+    .word-card.wrong {
+      border-color: var(--error);
+      animation: shake 0.4s;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-8px); }
+      75% { transform: translateX(8px); }
+    }
+
+    .reset-btn {
+      margin-top: 40px;
+      padding: 15px 35px;
+      font-size: 1.3rem;
+      background: #ffffff;
+      color: var(--brown);
+      border: 6px solid var(--brown); /* Кнопка також з товстим контуром */
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+
+    .reset-btn:hover {
+      background: #fdf5e6;
+    }
+
+    .win-message {
+      display: none; 
+      position: fixed; 
+      top: 50%; 
+      left: 50%;
+      transform: translate(-50%, -50%); 
+      background: white;
+      padding: 40px; 
+      border-radius: 25px; 
+      font-size: 2.5rem;
+      color: var(--success); 
+      border: 8px solid var(--success);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4); 
+      z-index: 100; 
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Гра "Великдень"</h1>
+  <div class="task-desc">Натисни на усі слова, які стосуються Великодня.</div>
+</header>
+
+<div class="words-grid" id="grid">
+</div>
+
+<button class="reset-btn" onclick="location.reload()">Почати спочатку</button>
+
+<div id="winMsg" class="win-message">Чудово!<br>Ти знаєш усі великодні символи! 🐣🌿</div>
+
+<script>
+  const wordsData = [
+    { text: "писанка", isEaster: true },
+    { text: "крашанка", isEaster: true },
+    { text: "яйце", isEaster: true },
+    { text: "паска", isEaster: true },
+    { text: "свічка", isEaster: true },
+    { text: "дряпанка", isEaster: true },
+    { text: "дзвони", isEaster: true },
+    { text: "ялинка", isEaster: false },
+    { text: "коляда", isEaster: false }
+  ];
+
+  let correctFound = 0;
+  const totalCorrect = wordsData.filter(w => w.isEaster).length;
+
+  function initGame() {
+    const grid = document.getElementById('grid');
+    const shuffledWords = [...wordsData].sort(() => Math.random() - 0.5);
+
+    shuffledWords.forEach(word => {
+      const card = document.createElement('div');
+      card.className = 'word-card';
+      card.textContent = word.text;
+      
+      card.onclick = function() {
+        if (card.classList.contains('correct')) return;
+
+        if (word.isEaster) {
+          card.classList.add('correct');
+          correctFound++;
+          checkWin();
+        } else {
+          // Додаємо підсвітку
+          card.classList.add('wrong');
+          // Прибираємо підсвітку через 600мс, повертаючи до початкового стану
+          setTimeout(() => {
+            card.classList.remove('wrong');
+          }, 600);
+        }
+      };
+
+      grid.appendChild(card);
+    });
+  }
+
+  function checkWin() {
+    if (correctFound === totalCorrect) {
+      const winMsg = document.getElementById('winMsg');
+      winMsg.style.display = 'block';
+      setTimeout(() => {
+        winMsg.style.display = 'none';
+      }, 5000);
+    }
+  }
+
+  initGame();
+</script>
+</body>
+</html>

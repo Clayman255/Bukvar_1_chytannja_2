@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Відгадай!</title>
+  <style>
+    :root{
+      --bg:#fbf6ee; --card:#fff; --accent:#ffd84d; --shadow:rgba(0,0,0,.10);
+      --bad:#ef4444; --good:#22c55e; --text:#2c3e50; --orange:#d35400; --line:rgba(44,62,80,.10);
+    }
+    body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);
+      display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:10px}
+    
+    h1{margin:0 0 8px;font-size:2rem;color:var(--orange);text-align:center}
+
+    .task{font-size:1.1rem;font-weight:600;background:#fff;padding:8px 15px;border-radius:12px;
+      box-shadow:0 2px 8px rgba(0,0,0,.05);display:inline-flex;align-items:center;gap:10px;text-align:center; margin-bottom: 15px;}
+    .task .snd{width:36px;height:36px;font-size:16px}
+
+    /* Questions details */
+    details{width:100%;max-width:1600px; margin-bottom: 20px;}
+    summary{list-style:none;cursor:pointer;user-select:none}
+    summary::-webkit-details-marker{display:none}
+
+    .panel{background:var(--card);border-radius:16px;box-shadow:0 5px 15px rgba(0,0,0,.06);border:1px solid var(--line);overflow:hidden}
+    .qa-title{font-size:16px;font-weight:800;padding:10px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .pm{width:30px;height:30px;border-radius:50%;background:rgba(255,216,77,.45);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;}
+    details[open] .pm::before{content:"−";}
+    details:not([open]) .pm::before{content:"+";}
+    .qa-list{margin:0;padding:14px;font-size:16px;line-height:1.3}
+    .qa-list li{margin:8px 0;display:flex;gap:8px;align-items:flex-start}
+
+    .snd{
+      border:0;background:var(--accent);width:32px;height:32px;border-radius:50%;
+      box-shadow:0 3px 6px var(--shadow);cursor:pointer;display:flex;align-items:center;justify-content:center;
+      font-size:16px;flex:0 0 auto
+    }
+    .snd:active{transform:scale(.98)}
+
+    /* --- MAIN LAYOUT GRID --- */
+    .wrap {
+      width: 100%;
+      max-width: 1600px;
+      display: grid;
+      grid-template-columns: 1fr; /* Mobile default */
+      gap: 20px;
+    }
+
+    /* Desktop: Left (Riddles) | Center (Bank) | Right (Riddles) */
+    @media (min-width: 1100px) {
+      .wrap {
+        /* Center column slightly wider to fit 3 images comfortably */
+        grid-template-columns: 1fr 1.3fr 1fr; 
+        align-items: start;
+      }
+    }
+
+    /* --- RIDDLES STYLING --- */
+    .riddles-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr; 
+      gap: 10px;
+    }
+
+    .riddle {
+      border-radius: 14px;
+      border: 1px solid rgba(0,0,0,.08);
+      background: #fff;
+      box-shadow: 0 4px 8px rgba(0,0,0,.04);
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 200px;
+    }
+
+    .rtop { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 5px;}
+    
+    .rtext {
+      font-size: 13px;
+      line-height: 1.25;
+      font-weight: 700;
+      white-space: pre-line;
+      width: 100%;
+    }
+
+    .drop {
+      border-radius: 12px;
+      border: 2px dashed rgba(44,62,80,.25);
+      background: rgba(255,216,77,.1);
+      width: 100%;
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: .2s;
+      min-height: 110px;
+    }
+    .drop.over { border-color: rgba(34,197,94,.65); background: rgba(34,197,94,.10); }
+    .drop.locked { border-style: solid; border-color: rgba(34,197,94,.55); background: rgba(34,197,94,.10); }
+
+    .chip {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      box-sizing: border-box;
+    }
+    .chip img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+      max-height: 140px;
+    }
+    .chip.ok { cursor: default; }
+    .chip.bad { animation: shake .45s ease-in-out; filter: sepia(1) hue-rotate(-50deg) saturate(3); }
+
+    /* --- BANK STYLING (CENTER - MODIFIED FOR 3-3-2 LAYOUT) --- */
+    .bank-wrapper {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding: 10px 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    
+    .bank {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center; /* This centers the last row of 2 */
+      gap: 15px;
+      width: 100%;
+    }
+
+    /* Image Item in Bank */
+    .item {
+      /* CALCULATION: (100% width - (2 gaps * 15px)) / 3 items = width for one item */
+      width: calc((100% - 30px) / 3);
+      aspect-ratio: 1;
+      
+      /* Visual styling */
+      border-radius: 20px;
+      background: #fff;
+      box-shadow: 0 10px 20px rgba(0,0,0,.12);
+      border: 4px solid #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+      user-select: none;
+      transition: transform .2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      padding: 10px;
+      box-sizing: border-box;
+      
+      flex-grow: 0;
+      flex-shrink: 0;
+    }
+    
+    .item:hover { transform: scale(1.1); z-index: 5; box-shadow: 0 15px 30px rgba(0,0,0,.15); }
+    .item:active { cursor: grabbing; transform: scale(0.95); }
+    
+    .item img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+    }
+    .item.used { opacity: .1; filter: grayscale(1); cursor: default; transform: none; box-shadow: none; }
+
+    @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+    
+    /* SUCCESS MESSAGE & BUTTON */
+    .win-message {
+      display: none; /* hidden by default */
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.98);
+      color: #22c55e;
+      border: 5px solid #22c55e;
+      padding: 30px 50px;
+      font-size: 3rem;
+      font-weight: 800;
+      border-radius: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      z-index: 1000;
+      /* Flex to align text and button */
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      
+      animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .restart-btn {
+      background: #22c55e;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      font-size: 32px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.3s ease, background 0.3s;
+      box-shadow: 0 5px 15px rgba(34, 197, 94, 0.4);
+    }
+
+    .restart-btn:hover {
+      background: #16a34a;
+      transform: rotate(180deg) scale(1.1);
+    }
+
+    @keyframes popIn {
+      0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+      100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    }
+
+    @media (max-width: 1100px) {
+      .riddles-col { grid-template-columns: 1fr; } 
+      .win-message { font-size: 2rem; padding: 20px 30px; width: 85%; flex-direction: column; }
+    }
+    
+    @media (max-width: 600px) {
+      .item { width: calc((100% - 15px) / 2); }
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Відгадай!</h1>
+
+  <div class="task">
+    <button class="snd" data-a="zv0" title="🔊">🔊</button>
+    <span>Розмісти зображення відгадки біля загадки.</span>
+  </div>
+
+  <details open>
+    <summary class="panel">
+      <div class="qa-title">
+        <span>Питання для обговорення</span>
+        <span class="pm" aria-hidden="true"></span>
+      </div>
+    </summary>
+    <div class="panel">
+      <ol class="qa-list">
+        <li><button class="snd" data-a="zv1" title="🔊">🔊</button><span>Назви слова-відгадки, у першому складі яких є звук [о].</span></li>
+        <li><button class="snd" data-a="zv2" title="🔊">🔊</button><span>А чи є такі слова, у яких звук [о] вживається і в першому, і в другому складі? Назви їх.</span></li>
+        <li><button class="snd" data-a="zv3" title="🔊">🔊</button><span>Поділи слово <b>«корова»</b> на склади.</span></li>
+        <li><button class="snd" data-a="zv4" title="🔊">🔊</button><span>Який склад є наголошеним?</span></li>
+        <li><button class="snd" data-a="zv5" title="🔊">🔊</button><span>Поділи слово <b>«сорока»</b> на склади.</span></li>
+        <li><button class="snd" data-a="zv6" title="🔊">🔊</button><span>Який склад є наголошеним?</span></li>
+      </ol>
+    </div>
+  </details>
+
+  <div class="wrap">
+    
+    <section id="riddles-left" class="riddles-col">
+      </section>
+
+    <section class="bank-wrapper">
+      <div class="bank" id="bank">
+        </div>
+    </section>
+
+    <section id="riddles-right" class="riddles-col">
+      </section>
+
+  </div>
+
+  <div id="winMsg" class="win-message">
+    <span>Ура! Все вдалося!</span>
+    <button id="btnRestart" class="restart-btn" title="Зіграти ще раз">↻</button>
+  </div>
+
+  <audio id="zv0" src="zv0.mp3"></audio>
+
+  <audio id="z1" src="z1.mp3"></audio>
+  <audio id="z2" src="z2.mp3"></audio>
+  <audio id="z3" src="z3.mp3"></audio>
+  <audio id="z4" src="z4.mp3"></audio>
+  <audio id="z5" src="z5.mp3"></audio>
+  <audio id="z6" src="z6.mp3"></audio>
+  <audio id="z7" src="z7.mp3"></audio>
+  <audio id="z8" src="z8.mp3"></audio>
+
+  <audio id="zv1" src="zv1.mp3"></audio>
+  <audio id="zv2" src="zv2.mp3"></audio>
+  <audio id="zv3" src="zv3.mp3"></audio>
+  <audio id="zv4" src="zv4.mp3"></audio>
+  <audio id="zv5" src="zv5.mp3"></audio>
+  <audio id="zv6" src="zv6.mp3"></audio>
+
+  <audio id="ok" src="https://actions.google.com/sounds/v1/cartoon/pop.ogg"></audio>
+  <audio id="no" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
+
+<script>
+  // Дані загадок
+  const riddlesData = [
+    { id: 1, audioId: "z1", text: "По полю гасає,\nОвечок хапає\nТа всіх лякає.", answerImg: "im1.png" },
+    { id: 2, audioId: "z2", text: "Тварина рогата,\nІ рогів багато.", answerImg: "im2.png" },
+    { id: 3, audioId: "z3", text: "Сірий, та не вовк,\nДовговухий, та не заєць,\nЗ копитами – та не кінь.", answerImg: "im3.png" },
+    { id: 4, audioId: "z4", text: "Дуже товсті ноги маю,\nТихо їх переставляю.\nВисочезний я на зріст,\nБіля рота маю хвіст!", answerImg: "im4.png" },
+    { id: 5, audioId: "z5", text: "Ця тварина каже: «Ме!\nЧи ви знаєте мене?»", answerImg: "im5.png" },
+    { id: 6, audioId: "z6", text: "Біла латка, чорна латка\nПо березі скаче.", answerImg: "im6.png" },
+    { id: 7, audioId: "z7", text: "Голодна – мукає,\nСита – жує,\nВсім дітям молока дає.", answerImg: "im7.png" },
+    { id: 8, audioId: "z8", text: "На скелі він будує дім\nІ не боїться жити в нім.\nДва могутні є крила\nУ господаря …", answerImg: "im8.png" },
+  ];
+
+  // Масив зображень
+  const imagesData = Array.from({length:8}, (_,i)=>({ img:`im${i+1}.png` }));
+
+  const leftCol = document.getElementById("riddles-left");
+  const rightCol = document.getElementById("riddles-right");
+  const bankEl = document.getElementById("bank");
+  const ok = document.getElementById("ok");
+  const no = document.getElementById("no");
+  const winMsg = document.getElementById("winMsg");
+
+  const placed = new Map();
+  const used = new Set();
+  const shuffle = a => [...a].sort(()=>0.5-Math.random());
+
+  function stopAll(){
+    document.querySelectorAll("audio").forEach(a=>{ try{ a.pause(); a.currentTime=0; }catch(e){} });
+  }
+  function play(id){
+    const a = document.getElementById(id);
+    if(!a) return;
+    stopAll();
+    a.currentTime = 0;
+    a.play().catch(()=>{});
+  }
+
+  document.addEventListener("click",(e)=>{
+    const btn = e.target.closest("[data-a]");
+    if(!btn) return;
+    play(btn.dataset.a);
+  });
+  
+  // Обробка кнопки перезапуску
+  document.getElementById("btnRestart").addEventListener("click", init);
+
+  function init(){
+    placed.clear(); used.clear();
+    leftCol.innerHTML = "";
+    rightCol.innerHTML = "";
+    bankEl.innerHTML = "";
+    winMsg.style.display = "none"; // Приховуємо перемогу
+
+    // 1. Розподіляємо загадки
+    const shuffledRiddles = shuffle(riddlesData);
+    
+    shuffledRiddles.forEach((r, index) => {
+      const card = document.createElement("div");
+      card.className = "riddle";
+      card.innerHTML = `
+        <div class="rtop">
+          <button class="snd" data-a="${r.audioId}" title="🔊">🔊</button>
+          <div class="rtext">${esc(r.text)}</div>
+        </div>
+        <div class="drop" data-drop="${r.id}"></div>
+      `;
+      
+      if (index < 4) {
+        leftCol.appendChild(card);
+      } else {
+        rightCol.appendChild(card);
+      }
+    });
+
+    // 2. Банк зображень
+    shuffle(imagesData).forEach(it=>{
+      const el = document.createElement("div");
+      el.className = "item";
+      el.draggable = true;
+      el.dataset.img = it.img;
+      el.innerHTML = `<img src="${it.img}" alt="">`;
+      el.addEventListener("dragstart",(e)=>{
+        if(el.classList.contains("used")) return e.preventDefault();
+        e.dataTransfer.setData("text/plain", it.img);
+      });
+      bankEl.appendChild(el);
+    });
+
+    // 3. Dropzone
+    document.querySelectorAll(".drop").forEach(zone=>{
+      zone.addEventListener("dragover",(e)=>{ 
+        e.preventDefault(); 
+        if(zone.classList.contains("locked")) return; 
+        zone.classList.add("over"); 
+      });
+      zone.addEventListener("dragleave",()=>zone.classList.remove("over"));
+      zone.addEventListener("drop",(e)=>{
+        e.preventDefault(); zone.classList.remove("over");
+        if(zone.classList.contains("locked")) return;
+        
+        const img = e.dataTransfer.getData("text/plain");
+        if(!img) return;
+        
+        const riddleId = Number(zone.dataset.drop);
+        dropTo(riddleId, img, zone);
+      });
+    });
+
+    // 4. Повернення в банк
+    bankEl.addEventListener("dragover",(e)=>e.preventDefault());
+    bankEl.addEventListener("drop",(e)=>{
+      e.preventDefault();
+      const img = e.dataTransfer.getData("text/plain");
+      const from = e.dataTransfer.getData("fromRiddle");
+      
+      if(!img || !from) return; 
+      
+      const rid = Number(from);
+      const zone = document.querySelector(`.drop[data-drop="${rid}"]`);
+      const chip = zone?.querySelector(".chip");
+      
+      if(!zone || (chip && chip.classList.contains("ok"))) return; 
+      
+      zone.classList.remove("locked");
+      zone.innerHTML = "";
+      
+      placed.delete(rid);
+      used.delete(img);
+      markUsed(img, false);
+    });
+  }
+
+  function dropTo(riddleId, img, zone){
+    if(used.has(img)) { pulse(zone); return; }
+
+    const r = riddlesData.find(x=>x.id===riddleId);
+    if(!r) return;
+
+    if(placed.has(riddleId)){
+      const prev = placed.get(riddleId);
+      used.delete(prev);
+      markUsed(prev, false);
+    }
+
+    zone.innerHTML = "";
+    const chip = document.createElement("div");
+    chip.className = "chip";
+    chip.draggable = true;
+    chip.innerHTML = `<img src="${img}" alt="">`;
+    
+    chip.addEventListener("dragstart",(e)=>{
+      if(chip.classList.contains("ok")) return e.preventDefault();
+      e.dataTransfer.setData("text/plain", img);
+      e.dataTransfer.setData("fromRiddle", String(riddleId));
+    });
+    
+    zone.appendChild(chip);
+
+    placed.set(riddleId,img);
+    used.add(img);
+    markUsed(img, true);
+
+    if(img === r.answerImg){
+      chip.classList.add("ok");
+      zone.classList.add("locked");
+      ok.currentTime=0; ok.play().catch(()=>{});
+      
+      // Перевірка перемоги
+      checkWin();
+    }else{
+      chip.classList.add("bad");
+      no.currentTime=0; no.play().catch(()=>{});
+      setTimeout(()=>chip.classList.remove("bad"), 550);
+    }
+  }
+
+  function checkWin() {
+    const solvedCount = document.querySelectorAll('.drop.locked').length;
+    if (solvedCount === riddlesData.length) {
+      setTimeout(() => {
+        // Показуємо flex, щоб вирівняти кнопку і текст
+        winMsg.style.display = "flex";
+      }, 500);
+    }
+  }
+
+  function markUsed(img, val){
+    const el = [...document.querySelectorAll("#bank .item")].find(x=>x.dataset.img===img);
+    if(!el) return;
+    el.classList.toggle("used", !!val);
+  }
+
+  function pulse(el){
+    el.style.transition="0.12s";
+    el.style.transform="translateX(-6px)";
+    el.style.borderColor="rgba(239,68,68,.75)";
+    setTimeout(()=>el.style.transform="translateX(6px)",80);
+    setTimeout(()=>{ el.style.transform="translateX(0)"; el.style.borderColor=""; },170);
+  }
+
+  const esc = s => String(s)
+    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;").replaceAll("'","&#039;").replaceAll("\n","<br>");
+
+  init();
+</script>
+</body>
+</html>

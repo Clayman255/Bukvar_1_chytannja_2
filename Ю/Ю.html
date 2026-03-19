@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Гра: Буква заблукала</title>
+  <style>
+    :root{
+      --bg:#f0f8ff;
+      --card:#fff;
+      --text:#2c3e50;
+      --line:rgba(44,62,80,.12);
+      --shadow:rgba(0,0,0,.10);
+      --accent:#ffd84d;
+      --good:#22c55e;
+      --bad:#ef4444;
+      --blue:#3498db;
+      --blue2:#2980b9;
+    }
+
+    body{
+      font-family: Arial, sans-serif;
+      background-color: var(--bg);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      padding: 20px;
+      color:var(--text);
+      margin:0;
+    }
+
+    h1{ margin:0 0 12px; }
+
+    .topbar{
+      width:100%;
+      max-width: 1200px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      flex-wrap:wrap;
+      background:var(--card);
+      border:1px solid var(--line);
+      box-shadow:0 6px 18px rgba(0,0,0,.06);
+      padding:10px 14px;
+      border-radius:16px;
+      margin-bottom:14px;
+      position: sticky;
+      top: 10px;
+      z-index: 100;
+    }
+
+    .snd{
+      border:0;
+      background:var(--accent);
+      width:44px;
+      height:44px;
+      border-radius:50%;
+      box-shadow:0 4px 10px var(--shadow);
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:18px;
+    }
+
+    .instruction{
+      font-size: 20px;
+      font-weight: 800;
+      text-align:center;
+    }
+
+    .afterWin{
+      display:none;
+      gap:10px;
+      align-items:center;
+      justify-content:center;
+      flex-wrap:wrap;
+      margin-left: 20px;
+      padding-left: 20px;
+      border-left: 2px solid #eee;
+    }
+
+    .winBadge{
+      border:2px solid rgba(34,197,94,.35);
+      color:var(--good);
+      padding:10px 14px;
+      border-radius:14px;
+      font-weight:900;
+      animation: pop 0.5s ease-out;
+    }
+
+    .againBtn{
+      border:0;
+      background:var(--good);
+      color:#fff;
+      padding:10px 14px;
+      border-radius:14px;
+      font-weight:900;
+      cursor:pointer;
+      box-shadow:0 10px 22px rgba(34,197,94,.25);
+    }
+
+    .game-container{
+      display:flex;
+      flex-direction:column;
+      gap: 20px;
+      width:100%;
+      max-width: 1300px;
+    }
+
+    .task-row{
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 25px;
+      background: white;
+      padding: 20px;
+      border-radius: 16px;
+      align-items: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.10);
+      overflow-x: auto;
+    }
+
+    .hint-img {
+      width: 160px;
+      height: 160px;
+      object-fit: contain;
+      border-radius: 12px;
+      background: #f9f9f9;
+      flex-shrink: 0;
+    }
+
+    .drop-zone-area{
+      display:flex;
+      gap: 8px;
+      padding-right: 20px;
+      border-right: 3px solid #eee;
+      flex-shrink: 0;
+    }
+
+    .letters-area{
+      display:flex;
+      gap: 10px;
+      flex-wrap: nowrap;
+    }
+
+    .letter-box{
+      width: 48px; /* Зменшено на 30% з 68px */
+      height: 48px; /* Зменшено на 30% з 68px */
+      background-color: #fff;
+      color: #000;
+      border: 2px solid var(--blue);
+      font-size: 26px; /* Пропорційно зменшений шрифт */
+      font-weight: 900;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor: grab;
+      border-radius: 10px;
+      user-select:none;
+      box-shadow:0 3px var(--blue);
+      touch-action:none;
+      flex-shrink: 0;
+    }
+
+    .letter-box.used{
+      border-color: var(--good);
+      box-shadow: none;
+      opacity: 0.8;
+      cursor: default;
+    }
+
+    .slot{
+      width: 48px; /* Зменшено на 30% з 68px */
+      height: 48px; /* Зменшено на 30% з 68px */
+      background-color: #f8f9fa;
+      border: 2px dashed #bdc3c7;
+      border-radius: 10px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-shrink: 0;
+    }
+
+    .slot.over { border-color: var(--blue); background: #ebf5fb; }
+    .slot.locked { border-style: solid; border-color: var(--good); background: #fff; }
+
+    @keyframes pop{
+      0%{ transform:scale(1); }
+      50%{ transform:scale(1.1); }
+      100%{ transform:scale(1); }
+    }
+
+    @keyframes shake{
+      0%,100%{ transform:translateX(0); }
+      25%{ transform:translateX(-5px); }
+      75%{ transform:translateX(5px); }
+    }
+    .fail-anim{ animation: shake .25s ease-in-out; border-color: var(--bad) !important; }
+
+    @media (max-width: 800px){
+      .task-row { flex-direction: column; }
+      .drop-zone-area { border-right: none; border-bottom: 3px solid #eee; padding-right: 0; padding-bottom: 15px; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Буква заблукала</h1>
+
+  <div class="topbar">
+    <button class="snd" id="btnSound" type="button">🔊</button>
+    <div class="instruction">Впорядкуй букви, щоб утворилися слова.</div>
+
+    <div class="afterWin" id="afterWin">
+      <div class="winBadge">🎉 Чудово!</div>
+      <button class="againBtn" id="btnAgain" type="button">🔁 Грати знову</button>
+    </div>
+  </div>
+
+  <div id="game-board" class="game-container"></div>
+
+  <audio id="au" src="au.mp3"></audio>
+  <audio id="ok" src="https://actions.google.com/sounds/v1/cartoon/pop.ogg"></audio>
+  <audio id="no" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
+
+  <script>
+    const levels = [
+      { id: 1, correct: "ЮРТА", scrambled: ["Р","Ю","А","Т"], img: "1.png" },
+      { id: 2, correct: "ЮШКА", scrambled: ["Ш","Ю","А","К"], img: "2.png" },
+      { id: 3, correct: "ТЮЛЬПАН", scrambled: ["Л","Ь","Т","Ю","П","А","Н"], img: "3.png" },
+      { id: 4, correct: "ЮНГА", scrambled: ["Н","Ю","А","Г"], img: "4.png" },
+      { id: 5, correct: "КАЮТА", scrambled: ["А","К","Ю","Т","А"], img: "5.png" }
+    ];
+
+    const gameBoard = document.getElementById("game-board");
+    const afterWin = document.getElementById("afterWin");
+    const btnAgain = document.getElementById("btnAgain");
+    const btnSound = document.getElementById("btnSound");
+    const au = document.getElementById("au");
+    const ok = document.getElementById("ok");
+    const no = document.getElementById("no");
+
+    let draggedItem = null;
+
+    function playAudio(a){
+      a.currentTime = 0;
+      a.play().catch(()=>{});
+    }
+
+    btnSound.addEventListener("click", ()=> playAudio(au));
+
+    function initGame(){
+      afterWin.style.display = "none";
+      gameBoard.innerHTML = "";
+
+      levels.forEach((level, index) => {
+        const row = document.createElement("div");
+        row.className = "task-row";
+        
+        const img = document.createElement("img");
+        img.src = level.img;
+        img.className = "hint-img";
+        row.appendChild(img);
+
+        const dropZoneArea = document.createElement("div");
+        dropZoneArea.className = "drop-zone-area";
+        for(let i=0; i<level.correct.length; i++){
+          const slot = document.createElement("div");
+          slot.className = "slot";
+          slot.dataset.expected = level.correct[i];
+          slot.dataset.rowIndex = index;
+          slot.addEventListener("dragover", e => e.preventDefault());
+          slot.addEventListener("dragenter", function() { if(!this.hasChildNodes()) this.classList.add("over"); });
+          slot.addEventListener("dragleave", function() { this.classList.remove("over"); });
+          slot.addEventListener("drop", handleDrop);
+          dropZoneArea.appendChild(slot);
+        }
+        row.appendChild(dropZoneArea);
+
+        const lettersArea = document.createElement("div");
+        lettersArea.className = "letters-area";
+        lettersArea.id = `origin-${index}`;
+        
+        level.scrambled.forEach((ch, charIndex) => {
+          const letter = document.createElement("div");
+          letter.className = "letter-box";
+          letter.draggable = true;
+          letter.textContent = ch;
+          letter.dataset.origin = `origin-${index}`;
+          letter.dataset.rowIndex = index;
+          letter.addEventListener("dragstart", function() {
+            draggedItem = this;
+            setTimeout(() => this.style.opacity = "0.5", 0);
+          });
+          letter.addEventListener("dragend", function() {
+            this.style.opacity = "1";
+            draggedItem = null;
+          });
+          lettersArea.appendChild(letter);
+        });
+        row.appendChild(lettersArea);
+
+        gameBoard.appendChild(row);
+      });
+    }
+
+    function handleDrop(e){
+      e.preventDefault();
+      this.classList.remove("over");
+      if(!draggedItem || this.hasChildNodes() || this.classList.contains("locked")) return;
+
+      if(draggedItem.dataset.rowIndex !== this.dataset.rowIndex || 
+         draggedItem.textContent !== this.dataset.expected){
+        playAudio(no);
+        this.classList.add("fail-anim");
+        setTimeout(()=> this.classList.remove("fail-anim"), 250);
+        return;
+      }
+
+      this.appendChild(draggedItem);
+      this.classList.add("locked");
+      draggedItem.draggable = false;
+      draggedItem.classList.add("used");
+      playAudio(ok);
+      checkAllWin();
+    }
+
+    function checkAllWin(){
+      const totalSlots = document.querySelectorAll(".slot").length;
+      const lockedSlots = document.querySelectorAll(".slot.locked").length;
+      if(totalSlots > 0 && totalSlots === lockedSlots){
+        afterWin.style.display = "flex";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    btnAgain.addEventListener("click", initGame);
+    initGame();
+  </script>
+</body>
+</html>

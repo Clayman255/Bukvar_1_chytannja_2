@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Утвори пару</title>
+    <style>
+        :root {
+            --bg: #f0fdf4;
+            --accent: #16a34a;
+            --dark-green: #14532d;
+            --cell-width: 192px; /* Збільшено на 20% */
+            --cell-height: 96px; /* Збільшено на 20% */
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: var(--bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            box-sizing: border-box;
+            color: #000; /* Чорний колір тексту */
+        }
+
+        h1 { 
+            color: #000; 
+            margin: 5px 0; 
+            font-size: 2.64rem; /* Збільшено */
+        }
+
+        .instruction {
+            background: white;
+            padding: 10px 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+            font-size: 1.68rem; /* Збільшено */
+            border-left: 5px solid var(--accent);
+            text-align: center;
+            max-width: 800px;
+            color: #000;
+        }
+
+        .result-area {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            min-height: 100px;
+        }
+
+        .pair-placeholder {
+            padding: 10px 20px;
+            background: white;
+            border: 2px dashed #a3e635;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem; /* Збільшено */
+            font-weight: bold;
+            color: #000;
+            animation: popIn 0.4s ease-out;
+        }
+
+        .game-board {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .row {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .word-card {
+            width: var(--cell-width);
+            height: var(--cell-height);
+            background: white;
+            border: 3px solid #86efac;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 2.16rem; /* Збільшено */
+            font-weight: bold;
+            color: #000;
+            user-select: none;
+        }
+
+        .word-card.selected {
+            border-color: #3b82f6;
+            background: #eff6ff;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+            transform: translateY(-5px);
+        }
+
+        .word-card.correct {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.5);
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .success-banner {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px 60px;
+            border-radius: 30px;
+            font-size: 3.6rem; /* Збільшено */
+            font-weight: bold;
+            border: 8px solid #22c55e;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            z-index: 1000;
+            color: #000;
+        }
+
+        .restart-btn {
+            display: none;
+            position: fixed;
+            bottom: 30px;
+            padding: 15px 40px;
+            font-size: 1.68rem; /* Збільшено */
+            font-weight: bold;
+            cursor: pointer;
+            background-color: white;
+            color: #000;
+            border: 4px solid var(--accent);
+            border-radius: 50px;
+            transition: all 0.2s ease;
+            z-index: 101;
+        }
+
+        .restart-btn:hover { background-color: var(--bg); }
+    </style>
+</head>
+<body>
+
+    <h1>Утвори пару</h1>
+    <div class="instruction">Утвори пари з двох слів, які відрізняються однією буквою.</div>
+
+    <div class="result-area" id="results"></div>
+
+    <div class="game-board" id="board">
+        <div class="row" id="top-row"></div>
+        <div class="row" id="bottom-row"></div>
+    </div>
+
+    <div id="win-message" class="success-banner">Чудово!</div>
+    <button id="retry-btn" class="restart-btn" onclick="resetGame()">Грати ще раз</button>
+
+    <script>
+        const config = [
+            { id: 1, w1: 'кіт', w2: 'кит' },
+            { id: 2, w1: 'ліс', w2: 'лис' },
+            { id: 3, w1: 'дім', w2: 'дим' },
+            { id: 4, w1: 'сом', w2: 'сон' },
+            { id: 5, w1: 'мак', w2: 'бак' }
+        ];
+
+        let selected = null;
+        let foundPairs = 0;
+
+        function init() {
+            const topRow = document.getElementById('top-row');
+            const bottomRow = document.getElementById('bottom-row');
+            document.getElementById('results').innerHTML = '';
+
+            topRow.innerHTML = '';
+            bottomRow.innerHTML = '';
+            selected = null;
+            foundPairs = 0;
+
+            const list1 = config.map(item => ({ id: item.id, text: item.w1 }));
+            const list2 = config.map(item => ({ id: item.id, text: item.w2 }));
+
+            const shuffled1 = list1.sort(() => Math.random() - 0.5);
+            const shuffled2 = list2.sort(() => Math.random() - 0.5);
+
+            shuffled1.forEach(item => topRow.appendChild(createCard(item, 'top')));
+            shuffled2.forEach(item => bottomRow.appendChild(createCard(item, 'bottom')));
+        }
+
+        function createCard(item, row) {
+            const card = document.createElement('div');
+            card.className = 'word-card';
+            card.id = `card-${row}-${item.id}`;
+            card.textContent = item.text;
+            card.onclick = () => handleSelect(item.id, row, item.text);
+            return card;
+        }
+
+        function handleSelect(id, row, text) {
+            const currentEl = document.getElementById(`card-${row}-${id}`);
+            
+            if (currentEl.classList.contains('correct')) return;
+
+            if (selected) {
+                if (selected.el === currentEl) {
+                    currentEl.classList.remove('selected');
+                    selected = null;
+                    return;
+                }
+
+                if (selected.id === id && selected.row !== row) {
+                    currentEl.classList.add('correct');
+                    selected.el.classList.add('correct');
+                    
+                    addResultPair(selected.text, text);
+                    foundPairs++;
+                    
+                    if (foundPairs === config.length) {
+                        showWin();
+                    }
+                    selected = null;
+                } else {
+                    selected.el.classList.remove('selected');
+                    selected = { id, row, el: currentEl, text };
+                    currentEl.classList.add('selected');
+                }
+            } else {
+                selected = { id, row, el: currentEl, text };
+                currentEl.classList.add('selected');
+            }
+        }
+
+        function addResultPair(t1, t2) {
+            const resArea = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = 'pair-placeholder';
+            div.textContent = `${t1} — ${t2}`;
+            resArea.appendChild(div);
+        }
+
+        function showWin() {
+            const winMsg = document.getElementById('win-message');
+            const retryBtn = document.getElementById('retry-btn');
+            winMsg.style.display = 'block';
+            retryBtn.style.display = 'block';
+            setTimeout(() => {
+                winMsg.style.display = 'none';
+            }, 5000);
+        }
+
+        function resetGame() {
+            document.getElementById('win-message').style.display = 'none';
+            document.getElementById('retry-btn').style.display = 'none';
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>

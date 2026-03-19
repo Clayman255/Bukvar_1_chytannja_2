@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Гра: Встанови відповідність</title>
+    <style>
+        :root {
+            --bg-color: #fdfcf0;
+            --accent-color: #3498db;
+            --success-color: #1e8449;
+            --success-bg: #ffffff;
+            --text-color: #000000;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        .game-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--text-color);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .instruction-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            z-index: 5;
+        }
+
+        .instruction-text {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        /* ПОВІДОМЛЕННЯ - ПОВНІСТЮ ОБОСОБЛЕНИЙ БЛОК */
+        .success-message {
+            display: none;
+            color: #27ae60;
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-align: center;
+            background: white;
+            padding: 15px 40px;
+            border-radius: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border: 4px solid #27ae60;
+            margin: 10px 0 30px 0;
+            z-index: 100;
+            width: fit-content;
+        }
+
+        /* КОНТЕЙНЕР ГРИ, В ЯКОМУ ОБМЕЖЕНІ СТРІЛКИ */
+        .game-layout {
+            display: flex;
+            justify-content: center;
+            align-items: stretch; 
+            gap: 57px; 
+            width: 100%;
+            max-width: 1400px;
+            position: relative; /* Це створює межу для стрілок */
+            padding: 10px;
+        }
+
+        #line-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .image-column {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .words-column {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 300px;
+        }
+
+        .drop-zone {
+            background: white;
+            border: 3px solid #bdc3c7;
+            border-radius: 15px;
+            padding: 0;
+            display: flex;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s, border-color 0.3s;
+            width: 225px;
+            height: 165px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .drop-zone:hover { transform: scale(1.05); }
+        .drop-zone.selected { border-color: var(--accent-color); }
+        .drop-zone.correct { border-color: #2ecc71; cursor: default; transform: none; }
+
+        .item-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            pointer-events: none;
+        }
+
+        .word-card {
+            background: white;
+            color: var(--text-color);
+            border: 3px solid var(--accent-color);
+            padding: 12px 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.4rem;
+            font-weight: bold;
+            width: 100%;
+            height: 60px;
+            box-sizing: border-box;
+            justify-content: space-between;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: all 0.2s;
+        }
+
+        .word-card.selected { 
+            background: var(--accent-color); 
+            color: white; 
+        }
+
+        .word-card.matched {
+            border-color: #2ecc71;
+            background: var(--success-bg) !important;
+            color: var(--success-color) !important;
+            cursor: default;
+        }
+
+        .audio-btn {
+            background: #ff9f43;
+            border: none;
+            border-radius: 50%;
+            width: 34px;
+            height: 34px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-title">Встанови відповідність</div>
+
+    <div class="instruction-container">
+        <button class="audio-btn" style="width:45px; height:45px; font-size:22px;" onclick="playSound('zav.mp3')">🔊</button>
+        <div class="instruction-text">Встанови відповідність між зображенням та словом.</div>
+    </div>
+
+    <div id="win-text" class="success-message">Чудово! Правильно! 🎉</div>
+
+    <div class="game-layout" id="game-area">
+        <canvas id="line-canvas"></canvas>
+        <div class="image-column" id="left-targets"></div>
+        <div class="words-column" id="words-container"></div>
+        <div class="image-column" id="right-targets"></div>
+    </div>
+
+    <script>
+        const data = [
+            { id: 1, img: '1.png', word: 'батискаф', audio: '1.mp3' },
+            { id: 2, img: '2.png', word: 'гелікоптер', audio: '2.mp3' },
+            { id: 3, img: '3.png', word: 'комбайн', audio: '3.mp3' },
+            { id: 4, img: '4.png', word: 'ракета', audio: '4.mp3' },
+            { id: 5, img: '5.png', word: 'трамвай', audio: '5.mp3' },
+            { id: 6, img: '6.png', word: 'човен', audio: '6.mp3' }
+        ];
+
+        let selectedId = null;
+        let selectedType = null;
+        let matchedCount = 0;
+        let connections = [];
+
+        const canvas = document.getElementById('line-canvas');
+        const ctx = canvas.getContext('2d');
+        const gameArea = document.getElementById('game-area');
+
+        function playSound(file) {
+            new Audio(file).play().catch(() => {});
+        }
+
+        window.onload = () => {
+            initGame();
+            setTimeout(resizeCanvas, 100);
+        };
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function resizeCanvas() {
+            canvas.width = gameArea.offsetWidth;
+            canvas.height = gameArea.offsetHeight;
+            drawArrows();
+        }
+
+        function initGame() {
+            const leftCol = document.getElementById('left-targets');
+            const rightCol = document.getElementById('right-targets');
+            const wordsCol = document.getElementById('words-container');
+
+            data.forEach((item, index) => {
+                const zone = document.createElement('div');
+                zone.className = 'drop-zone';
+                zone.id = `target-${item.id}`;
+                zone.onclick = () => handleItemClick(item.id, 'target');
+                zone.innerHTML = `<img src="${item.img}" class="item-img">`;
+                if (index < 3) leftCol.appendChild(zone);
+                else rightCol.appendChild(zone);
+            });
+
+            const shuffled = [...data].sort(() => Math.random() - 0.5);
+            shuffled.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'word-card';
+                card.id = `word-${item.id}`;
+                card.onclick = () => handleItemClick(item.id, 'word');
+                card.innerHTML = `
+                    <span>${item.word}</span>
+                    <button class="audio-btn" onclick="event.stopPropagation(); playSound('${item.audio}')">🔊</button>
+                `;
+                wordsCol.appendChild(card);
+            });
+        }
+
+        function handleItemClick(id, type) {
+            const el = document.getElementById(`${type}-${id}`);
+            if (el.classList.contains('matched') || el.classList.contains('correct')) return;
+
+            if (selectedId === id && selectedType === type) {
+                clearSelection();
+                return;
+            }
+
+            if (!selectedType || selectedType === type) {
+                clearSelection();
+                selectedId = id;
+                selectedType = type;
+                el.classList.add('selected');
+            } else {
+                if (selectedId === id) {
+                    const wordEl = document.getElementById(`word-${id}`);
+                    const targetEl = document.getElementById(`target-${id}`);
+                    
+                    wordEl.classList.remove('selected');
+                    wordEl.classList.add('matched');
+                    targetEl.classList.add('correct');
+                    
+                    connections.push({ id: id });
+                    matchedCount++;
+                    clearSelection();
+                    drawArrows();
+                    
+                    if (matchedCount === data.length) {
+                        const winText = document.getElementById('win-text');
+                        winText.style.display = 'block';
+                        setTimeout(() => { winText.style.display = 'none'; }, 5000);
+                    }
+                } else {
+                    clearSelection();
+                    selectedId = id;
+                    selectedType = type;
+                    el.classList.add('selected');
+                }
+            }
+        }
+
+        function clearSelection() {
+            document.querySelectorAll('.word-card, .drop-zone').forEach(el => el.classList.remove('selected'));
+            selectedId = null;
+            selectedType = null;
+        }
+
+        function drawArrows() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#3498db';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+
+            const areaRect = gameArea.getBoundingClientRect();
+
+            connections.forEach(conn => {
+                const wEl = document.getElementById(`word-${conn.id}`);
+                const tEl = document.getElementById(`target-${conn.id}`);
+                
+                const wRect = wEl.getBoundingClientRect();
+                const tRect = tEl.getBoundingClientRect();
+
+                // Координати відносно контейнера game-layout
+                const wordCenterY = (wRect.top + wRect.height / 2) - areaRect.top;
+                const targetCenterY = (tRect.top + tRect.height / 2) - areaRect.top;
+
+                let wordX, targetX;
+
+                if (tRect.left < wRect.left) {
+                    targetX = tRect.right - areaRect.left;
+                    wordX = wRect.left - areaRect.left;
+                } else {
+                    targetX = tRect.left - areaRect.left;
+                    wordX = wRect.right - areaRect.left;
+                }
+
+                ctx.beginPath();
+                ctx.moveTo(targetX, targetCenterY);
+                ctx.lineTo(wordX, wordCenterY);
+                ctx.stroke();
+
+                ctx.fillStyle = '#3498db';
+                ctx.beginPath();
+                ctx.arc(targetX, targetCenterY, 5, 0, Math.PI * 2);
+                ctx.arc(wordX, wordCenterY, 5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+    </script>
+</body>
+</html>

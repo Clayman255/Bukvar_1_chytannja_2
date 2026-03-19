@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Гра: Наголошений склад</title>
+    <style>
+        :root {
+            --bg: #fdf5e6; /* Світло-кремовий */
+            --accent: #5d4037; /* Темно-коричневий для акцентів */
+            --success-bg: #ffffff;
+            --success-border: #22c55e;
+            --success-text: #166534;
+            --text: #000000;
+            --title-color: #4e342e;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        .game-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--title-color);
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .instruction-container {
+            background: #fff;
+            padding: 15px 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border-bottom: 5px solid var(--accent);
+            margin-bottom: 30px;
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--title-color);
+            text-align: center;
+        }
+
+        /* Початковий блок слів */
+        .words-pool {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-content: center;
+            gap: 15px;
+            margin-bottom: 40px;
+            height: 250px; 
+            width: 100%;
+            max-width: 1000px;
+            padding: 20px;
+            border: 2px dashed #bcaaa4;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.3);
+            box-sizing: border-box;
+        }
+
+        /* Блок для правильно обраних слів */
+        .result-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 1100px;
+            background: #ffffff;
+            border: 3px solid #d7ccc8;
+            border-radius: 25px;
+            padding: 20px;
+            min-height: 200px;
+            gap: 15px;
+        }
+
+        .column-title {
+            font-size: 1.8rem;
+            color: var(--title-color);
+            margin-bottom: 15px;
+            text-align: center;
+            border-bottom: 2px solid #5d403733;
+            width: 100%;
+            padding-bottom: 10px;
+        }
+
+        .correct-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .word-card {
+            background: var(--card-bg);
+            border: 2px solid #d7ccc8;
+            border-radius: 12px;
+            padding: 15px 30px;
+            font-size: 2rem; 
+            font-weight: bold;
+            color: #000;
+            cursor: pointer;
+            user-select: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .word-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent);
+        }
+
+        /* Стиль для правильно вибраних слів - білий фон */
+        .word-card.correct {
+            background: #ffffff !important;
+            border-color: var(--success-border);
+            color: var(--success-text);
+            cursor: default;
+            transform: none;
+        }
+
+        @keyframes shake-blink {
+            0%, 100% { border-color: #d7ccc8; transform: translateX(0); }
+            25% { border-color: #e74c3c; transform: translateX(-5px); }
+            75% { border-color: #e74c3c; transform: translateX(5px); }
+        }
+
+        .shake { animation: shake-blink 0.4s ease-in-out; }
+
+        .success-message {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--success-bg);
+            color: var(--success-text);
+            border: 5px solid var(--success-border);
+            padding: 30px 60px;
+            border-radius: 50px;
+            font-size: 3.5rem;
+            font-weight: bold;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            z-index: 100;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        .restart-btn {
+            display: none;
+            margin-top: 40px;
+            padding: 12px 30px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            background-color: #ffffff;
+            color: #000000;
+            border: 2px solid #000000;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .restart-btn:hover { background-color: #f0f0f0; transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+
+    <div class="game-title">Наголошений склад</div>
+
+    <div class="instruction-container">
+        Натисни на ті слова, у яких наголошеним є другий склад.
+    </div>
+
+    <div class="words-pool" id="pool"></div>
+
+    <div class="result-container">
+        <div class="column-title">Слова з наголосом на другому складі:</div>
+        <div id="correct-list" class="correct-list"></div>
+    </div>
+
+    <div id="win-banner" class="success-message">Вдалося! 🎉</div>
+
+    <button id="restart-btn" class="restart-btn" onclick="restartGame()">Ще раз</button>
+
+    <script>
+        const wordsData = [
+            { text: 'квіти', isCorrect: false },
+            { text: 'небо', isCorrect: false },
+            { text: 'гай', isCorrect: false },
+            { text: 'корова', isCorrect: true },
+            { text: 'трава', isCorrect: true },
+            { text: 'соловей', isCorrect: false },
+            { text: 'ліс', isCorrect: false },
+            { text: 'тюльпан', isCorrect: true },
+            { text: 'салат', isCorrect: true },
+            { text: 'собака', isCorrect: true }
+        ];
+
+        const pool = document.getElementById('pool');
+        const correctList = document.getElementById('correct-list');
+        const winBanner = document.getElementById('win-banner');
+        const restartBtn = document.getElementById('restart-btn');
+        
+        let correctFound = 0;
+        const totalCorrectNeeded = wordsData.filter(w => w.isCorrect).length;
+
+        function init() {
+            pool.innerHTML = '';
+            correctList.innerHTML = '';
+            correctFound = 0;
+            
+            const shuffled = [...wordsData].sort(() => Math.random() - 0.5);
+            
+            shuffled.forEach((word, index) => {
+                const card = document.createElement('div');
+                card.className = 'word-card';
+                card.textContent = word.text;
+                
+                card.onclick = () => {
+                    if (card.classList.contains('correct')) return;
+
+                    if (word.isCorrect) {
+                        card.classList.add('correct');
+                        correctList.appendChild(card);
+                        correctFound++;
+                        checkWin();
+                    } else {
+                        card.classList.add('shake');
+                        setTimeout(() => card.classList.remove('shake'), 400);
+                    }
+                };
+                
+                pool.appendChild(card);
+            });
+        }
+
+        function restartGame() {
+            winBanner.style.display = 'none';
+            restartBtn.style.display = 'none';
+            init();
+        }
+
+        function checkWin() {
+            if (correctFound === totalCorrectNeeded) {
+                winBanner.style.display = 'block';
+                restartBtn.style.display = 'block';
+                setTimeout(() => {
+                    winBanner.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Склади слова</title>
+  <style>
+    :root {
+      --bg: #f0f8ff; /* AliceBlue */
+      --primary: #00008b; /* DarkBlue */
+      --accent: #00bfff; /* DeepSkyBlue */
+      --success: #27ae60;
+      --error: #e74c3c;
+      --text: #000000;
+      --main-font: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--main-font);
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    header { text-align: center; margin-bottom: 20px; }
+    h1 { color: var(--primary); margin-bottom: 10px; font-size: 2.5rem; }
+    
+    .task-desc {
+      font-size: 1.5rem; 
+      background: #fff; 
+      padding: 15px 25px;
+      border-radius: 12px; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      max-width: 800px; 
+      border-left: 6px solid var(--accent);
+      margin: 0 auto 30px auto;
+      text-align: center;
+    }
+
+    .game-container {
+      background: white;
+      padding: 30px;
+      border-radius: 20px;
+      border: 6px solid var(--primary);
+      max-width: 800px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    .hint {
+      font-size: 1.8rem;
+      margin-bottom: 20px;
+      /* Курсив прибрано */
+      color: var(--primary);
+    }
+
+    .word-display {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 30px;
+      min-height: 80px;
+    }
+
+    .letter-slot {
+      width: 60px;
+      height: 70px;
+      border-bottom: 5px solid var(--accent);
+      font-size: 2.5rem;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .letters-pool {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .letter-btn {
+      width: 65px;
+      height: 65px;
+      background: white;
+      border: 6px solid var(--primary);
+      border-radius: 12px;
+      font-size: 2rem;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .letter-btn.correct {
+      border-color: var(--success);
+      color: var(--success);
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    .letter-btn.wrong {
+      border-color: var(--error);
+      color: var(--error);
+      animation: shake 0.4s;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+
+    .win-message {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 40px;
+      border-radius: 25px;
+      font-size: 3rem;
+      color: var(--success);
+      border: 8px solid var(--success);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      z-index: 100;
+      text-align: center;
+    }
+
+    .reset-btn {
+      margin-top: 30px;
+      padding: 15px 35px;
+      font-size: 1.3rem;
+      background: #ffffff;
+      color: var(--primary);
+      border: 6px solid var(--primary);
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Склади слова</h1>
+  <div class="task-desc">Із букв склади слова, які стосуються Песаха. Скористайся підказками.</div>
+</header>
+
+<div class="game-container" id="gameBox">
+  <div class="hint" id="hintText"></div>
+  <div class="word-display" id="wordDisplay"></div>
+  <div class="letters-pool" id="lettersPool"></div>
+</div>
+
+<button class="reset-btn" onclick="location.reload()">Почати спочатку</button>
+
+<div id="winMsg" class="win-message">Вдалося!</div>
+
+<script>
+  const wordsData = [
+    { word: "Песах", hint: "Єврейський Великдень" },
+    { word: "маца", hint: "Пісні хлібці" },
+    { word: "харосет", hint: "Суміш із тертих горіхів, фініків, яблук" },
+    { word: "марор", hint: "Пучок гіркої зелені" },
+    { word: "зроа", hint: "Смажена баранина на кістці" }
+  ];
+
+  let currentWordIndex = 0;
+  let currentLetterIndex = 0;
+
+  function loadWord() {
+    const data = wordsData[currentWordIndex];
+    document.getElementById('hintText').textContent = `Підказка. ${data.hint}`;
+    
+    const display = document.getElementById('wordDisplay');
+    display.innerHTML = '';
+    for (let i = 0; i < data.word.length; i++) {
+      const slot = document.createElement('div');
+      slot.className = 'letter-slot';
+      slot.id = `slot-${i}`;
+      display.appendChild(slot);
+    }
+
+    const pool = document.getElementById('lettersPool');
+    pool.innerHTML = '';
+    
+    const letters = data.word.split('').sort(() => Math.random() - 0.5);
+    
+    letters.forEach((char) => {
+      const btn = document.createElement('button');
+      btn.className = 'letter-btn';
+      btn.textContent = char;
+      btn.onclick = () => handleLetterClick(char, btn);
+      pool.appendChild(btn);
+    });
+  }
+
+  function handleLetterClick(char, btn) {
+    const currentWord = wordsData[currentWordIndex].word;
+    const targetLetter = currentWord[currentLetterIndex];
+
+    if (char === targetLetter && !btn.classList.contains('correct')) {
+      document.getElementById(`slot-${currentLetterIndex}`).textContent = char;
+      btn.classList.add('correct');
+      currentLetterIndex++;
+
+      if (currentLetterIndex === currentWord.length) {
+        setTimeout(nextWord, 1000);
+      }
+    } else if (char !== targetLetter) {
+      btn.classList.add('wrong');
+      setTimeout(() => btn.classList.remove('wrong'), 400);
+    }
+  }
+
+  function nextWord() {
+    currentWordIndex++;
+    currentLetterIndex = 0;
+    
+    if (currentWordIndex < wordsData.length) {
+      loadWord();
+    } else {
+      const winMsg = document.getElementById('winMsg');
+      winMsg.style.display = 'block';
+      setTimeout(() => { winMsg.style.display = 'none'; }, 5000);
+    }
+  }
+
+  loadWord();
+</script>
+</body>
+</html>

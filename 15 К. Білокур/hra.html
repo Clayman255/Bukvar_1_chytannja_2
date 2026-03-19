@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Гра "Назва картини К. Білокур"</title>
+  <style>
+    :root {
+      --bg: #fdfaf5;
+      --accent: #2980b9;
+      --success: #27ae60;
+      --text: #2c3e50;
+      --main-font: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--main-font);
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+    }
+
+    header { text-align: center; margin-bottom: 20px; }
+    h1 { color: #8e44ad; margin-bottom: 10px; }
+    
+    .task-desc {
+      font-size: 1.2rem; background: #fff; padding: 15px 25px;
+      border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      max-width: 1000px; border-left: 6px solid #8e44ad;
+      margin: 0 auto 30px auto;
+    }
+
+    /* Основний контейнер для двох колонок */
+    .main-content {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      gap: 40px;
+      max-width: 1200px;
+      margin: 0 auto;
+      align-items: flex-start;
+    }
+
+    /* Ліва колонка з назвами - ЛИПКА (sticky) */
+    .names-sidebar {
+      position: -webkit-sticky;
+      position: sticky;
+      top: 20px; /* Відступ зверху при прокрутці */
+      flex: 1;
+      min-width: 300px;
+      background: #eee7f3;
+      padding: 25px;
+      border-radius: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    }
+
+    .draggable-name {
+      padding: 15px 20px;
+      background: #fff;
+      border: 2px solid #8e44ad;
+      border-radius: 10px;
+      cursor: grab;
+      font-weight: bold;
+      font-size: 2rem; /* Збільшено шрифт удвічі */
+      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+      user-select: none;
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    .draggable-name:active { cursor: grabbing; }
+
+    /* Права колонка з картинками (по 2 у ряд) */
+    .gallery-grid {
+      flex: 2;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr); /* По дві в ряд */
+      gap: 30px;
+    }
+
+    .card {
+      background: #fff;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center; /* Вирівнювання посередині у плашці */
+      min-height: 450px;
+    }
+
+    .card img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      border: 1px solid #ddd;
+    }
+
+    .drop-zone {
+      width: 100%;
+      min-height: 70px;
+      border: 2px dashed #bdc3c7;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f1f1f1;
+      transition: all 0.3s;
+      font-size: 1.2rem;
+      color: #7f8c8d;
+      text-align: center;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    .drop-zone.hover { background: #e8f4fd; border-color: var(--accent); }
+    .drop-zone.correct { 
+      border-color: var(--success); 
+      background: #eafaf1; 
+      color: #000; 
+      border-style: solid; 
+      font-weight: bold;
+      font-size: 1.5rem;
+    }
+    .drop-zone.wrong { border-color: #e74c3c; background: #fdedec; }
+
+    .controls {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 40px;
+    }
+
+    .source-link {
+      margin-top: 20px;
+      font-size: 0.9rem;
+      color: #7f8c8d;
+      text-decoration: none;
+    }
+    .source-link:hover { color: #8e44ad; text-decoration: underline; }
+
+    .reset-btn {
+      padding: 15px 30px; font-size: 1.2rem;
+      background: #8e44ad; color: white; border: none;
+      border-radius: 8px; cursor: pointer; font-weight: bold;
+    }
+
+    .win-message {
+      display: none; position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); background: white;
+      padding: 40px; border-radius: 25px; font-size: 2.5rem;
+      color: var(--success); border: 6px solid var(--success);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4); z-index: 100; text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Назва картини К. Білокур</h1>
+  <div class="task-desc">Прочитай назви картин. Розмісти відповідну назву в комірку під картину.</div>
+</header>
+
+<div class="main-content">
+  <aside class="names-sidebar" id="namesPool">
+    </aside>
+
+  <main class="gallery-grid" id="galleryGrid">
+    </main>
+</div>
+
+<div class="controls">
+  <button class="reset-btn" onclick="location.reload()">Почати спочатку</button>
+  <a href="https://vogue.ua/article/culture/art/10-shedevriv-vidatnoji-hudozhnici-katerini-bilokur-50693.html" 
+     target="_blank" class="source-link">Картини взято з сайту vogue.ua</a>
+</div>
+
+<div id="winMsg" class="win-message">Чудово! <br> Ти справжній знавець творчості Катерини Білокур!</div>
+
+<script>
+  const paintings = [
+    { id: 1, name: "«Квіти на блакитному тлі»", img: "1.webp" },
+    { id: 2, name: "«Квіти біля паркану»", img: "2.webp" },
+    { id: 3, name: "«Котики»", img: "3.webp" },
+    { id: 4, name: "«Натюрморт, кавун, морква, квіти»", img: "4.webp" },
+    { id: 5, name: "«Натюрморт з буряком»", img: "5.webp" },
+    { id: 6, name: "«Будинок в Богданівці»", img: "6.webp" }
+  ];
+
+  let matchedCount = 0;
+
+  function initGame() {
+    const pool = document.getElementById('namesPool');
+    const grid = document.getElementById('galleryGrid');
+
+    // Перемішуємо назви
+    const shuffledNames = [...paintings].sort(() => Math.random() - 0.5);
+    shuffledNames.forEach(p => {
+      const div = document.createElement('div');
+      div.className = 'draggable-name';
+      div.textContent = p.name;
+      div.draggable = true;
+      div.id = `name-${p.id}`;
+      div.addEventListener('dragstart', dragStart);
+      pool.appendChild(div);
+    });
+
+    // Перемішуємо картини
+    const shuffledPaintings = [...paintings].sort(() => Math.random() - 0.5);
+    shuffledPaintings.forEach(p => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <img src="${p.img}" alt="Картина" onerror="this.src='https://via.placeholder.com/400x350?text=Картина+${p.id}'">
+        <div class="drop-zone" data-id="${p.id}">Сюди</div>
+      `;
+      grid.appendChild(card);
+      
+      const zone = card.querySelector('.drop-zone');
+      zone.addEventListener('dragover', dragOver);
+      zone.addEventListener('dragleave', dragLeave);
+      zone.addEventListener('drop', drop);
+    });
+  }
+
+  function dragStart(e) {
+    e.dataTransfer.setData('text/plain', e.target.id);
+  }
+
+  function dragOver(e) {
+    e.preventDefault();
+    if (!e.target.classList.contains('correct')) {
+      e.target.classList.add('hover');
+    }
+  }
+
+  function dragLeave(e) {
+    e.target.classList.remove('hover');
+  }
+
+  function drop(e) {
+    e.preventDefault();
+    const zone = e.target;
+    if (zone.classList.contains('correct') || !zone.classList.contains('drop-zone')) return;
+    
+    zone.classList.remove('hover');
+
+    const nameId = e.dataTransfer.getData('text/plain');
+    const nameEl = document.getElementById(nameId);
+    const paintingId = nameId.split('-')[1];
+
+    if (zone.dataset.id === paintingId) {
+      zone.textContent = nameEl.textContent;
+      zone.classList.add('correct');
+      zone.classList.remove('wrong');
+      nameEl.style.display = 'none'; // Видаляємо назву зі списку
+      matchedCount++;
+
+      if (matchedCount === paintings.length) {
+        document.getElementById('winMsg').style.display = 'block';
+      }
+    } else {
+      zone.classList.add('wrong');
+      setTimeout(() => zone.classList.remove('wrong'), 500);
+    }
+  }
+
+  initGame();
+</script>
+</body>
+</html>

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Гра: Розподіли слова</title>
+    <style>
+        :root {
+            --bg: #fdf5e6;
+            --accent: #5d4037;
+            --success-bg: #ffffff;
+            --success-border: #22c55e;
+            --success-text: #166534;
+            --title-color: #4e342e;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        .game-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--title-color);
+            margin-bottom: 10px;
+        }
+
+        .instruction-container {
+            background: #fff;
+            padding: 10px 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border-bottom: 5px solid var(--accent);
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: var(--title-color);
+        }
+
+        .words-pool {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            min-height: 180px;
+            width: 100%;
+            max-width: 1100px;
+            padding: 15px;
+            border: 2px dashed #bcaaa4;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.3);
+            box-sizing: border-box;
+        }
+
+        .word-card {
+            background: var(--card-bg);
+            border: 2px solid #d7ccc8;
+            border-radius: 10px;
+            padding: 10px 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: grab;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+
+        .word-card.dragging { opacity: 0.5; }
+        
+        .shake { animation: shake 0.4s ease-in-out; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); border-color: #d7ccc8; }
+            25% { transform: translateX(-5px); border-color: #e74c3c; }
+            75% { transform: translateX(5px); border-color: #e74c3c; }
+        }
+
+        .game-layout {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        .column {
+            background: #ffffff;
+            border: 3px solid #d7ccc8;
+            border-radius: 20px;
+            padding: 15px;
+            /* Висоту зменшено на 20% від 220px = 176px */
+            min-height: 176px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .column.drag-over {
+            background: #fdfcf0;
+            border-color: var(--accent);
+        }
+
+        .column-title {
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: var(--title-color);
+            margin-bottom: 10px;
+            border-bottom: 2px solid #5d403733;
+            width: 100%;
+            text-align: center;
+            padding-bottom: 5px;
+        }
+
+        .success-message {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--success-bg);
+            color: var(--success-text);
+            border: 5px solid var(--success-border);
+            padding: 30px 60px;
+            border-radius: 50px;
+            font-size: 3rem;
+            font-weight: bold;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .restart-btn {
+            display: none;
+            margin: 30px 0;
+            padding: 12px 30px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            background: #fff;
+            border: 2px solid #000;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .restart-btn:hover { background: #f0f0f0; }
+
+        @media (max-width: 768px) {
+            .game-layout { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-title">Розподіли</div>
+
+    <div class="instruction-container">
+        Розподіли слова у комірки.
+    </div>
+
+    <div class="words-pool" id="pool"></div>
+
+    <div class="game-layout">
+        <div class="column" data-question="хто">
+            <div class="column-title">Хто?</div>
+        </div>
+        <div class="column" data-question="що">
+            <div class="column-title">Що?</div>
+        </div>
+        <div class="column" data-question="який">
+            <div class="column-title">Який?</div>
+        </div>
+        <div class="column" data-question="яка">
+            <div class="column-title">Яка?</div>
+        </div>
+        <div class="column" data-question="яке">
+            <div class="column-title">Яке?</div>
+        </div>
+        <div class="column" data-question="які">
+            <div class="column-title">Які?</div>
+        </div>
+    </div>
+
+    <div id="win-banner" class="success-message">Вдалося! 🎉</div>
+
+    <button id="restart-btn" class="restart-btn" onclick="restartGame()">Ще раз</button>
+
+    <script>
+        const wordsData = [
+            { text: 'хата', q: 'що' },
+            { text: 'дівчинка', q: 'хто' },
+            { text: 'хлопчик', q: 'хто' },
+            { text: 'сукня', q: 'що' },
+            { text: 'зелений', q: 'який' },
+            { text: 'гаряча', q: 'яка' },
+            { text: 'вишневий', q: 'який' },
+            { text: 'ніжна', q: 'яка' },
+            { text: 'яскраве', q: 'яке' },
+            { text: 'сумне', q: 'яке' },
+            { text: 'дружні', q: 'які' },
+            { text: 'теплі', q: 'які' }
+        ];
+
+        const pool = document.getElementById('pool');
+        const columns = document.querySelectorAll('.column');
+        const winBanner = document.getElementById('win-banner');
+        const restartBtn = document.getElementById('restart-btn');
+        let draggedElement = null;
+
+        function init() {
+            pool.innerHTML = '';
+            const shuffled = [...wordsData].sort(() => Math.random() - 0.5);
+            
+            shuffled.forEach((word, index) => {
+                const card = document.createElement('div');
+                card.className = 'word-card';
+                card.textContent = word.text;
+                card.draggable = true;
+                card.dataset.answer = word.q;
+                card.id = 'w-' + index;
+
+                card.addEventListener('dragstart', function() {
+                    draggedElement = this;
+                    setTimeout(() => this.classList.add('dragging'), 0);
+                });
+
+                card.addEventListener('dragend', function() {
+                    this.classList.remove('dragging');
+                    draggedElement = null;
+                    checkWin();
+                });
+                
+                pool.appendChild(card);
+            });
+        }
+
+        columns.forEach(column => {
+            column.addEventListener('dragover', e => {
+                e.preventDefault();
+                column.classList.add('drag-over');
+            });
+
+            column.addEventListener('dragleave', () => {
+                column.classList.remove('drag-over');
+            });
+
+            column.addEventListener('drop', e => {
+                e.preventDefault();
+                column.classList.remove('drag-over');
+                
+                const correctQuestion = draggedElement.dataset.answer;
+                const columnQuestion = column.dataset.question;
+
+                if (correctQuestion === columnQuestion) {
+                    column.appendChild(draggedElement);
+                } else {
+                    draggedElement.classList.add('shake');
+                    setTimeout(() => draggedElement.classList.remove('shake'), 400);
+                }
+            });
+        });
+
+        pool.addEventListener('dragover', e => e.preventDefault());
+        pool.addEventListener('drop', () => {
+            if (draggedElement) pool.appendChild(draggedElement);
+        });
+
+        function checkWin() {
+            if (pool.querySelectorAll('.word-card').length === 0) {
+                winBanner.style.display = 'block';
+                restartBtn.style.display = 'block';
+                setTimeout(() => winBanner.style.display = 'none', 4000);
+            }
+        }
+
+        function restartGame() {
+            columns.forEach(col => {
+                const title = col.querySelector('.column-title');
+                col.innerHTML = '';
+                col.appendChild(title);
+            });
+            winBanner.style.display = 'none';
+            restartBtn.style.display = 'none';
+            init();
+        }
+
+        init();
+    </script>
+</body>
+</html>
